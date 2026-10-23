@@ -645,15 +645,19 @@ public struct FilterData : Equatable {
     public let filter: ChatListFilter
     public let tabs: [ChatListFilter]
     public let sidebar: Bool
+    public let compactTabs: Bool
+    public let favoriteTabIds: [Int32]?
     public let showTags: Bool
     public let request: ChatListIndexRequest
     public let badges: ChatListFilterBadges
     public let requestTimestamp: TimeInterval
     public var isTop: Bool
-    public init(filter: ChatListFilter = .allChats, tabs: [ChatListFilter] = [], sidebar: Bool = false, showTags: Bool = false, request: ChatListIndexRequest = .Initial(50, nil), badges: ChatListFilterBadges = .init(total: 0, filters: []), requestTimestamp: TimeInterval = CACurrentMediaTime(), isTop: Bool = true) {
+    public init(filter: ChatListFilter = .allChats, tabs: [ChatListFilter] = [], sidebar: Bool = false, compactTabs: Bool = false, favoriteTabIds: [Int32]? = nil, showTags: Bool = false, request: ChatListIndexRequest = .Initial(50, nil), badges: ChatListFilterBadges = .init(total: 0, filters: []), requestTimestamp: TimeInterval = CACurrentMediaTime(), isTop: Bool = true) {
         self.filter = filter
         self.tabs = tabs
         self.sidebar = sidebar
+        self.compactTabs = compactTabs
+        self.favoriteTabIds = favoriteTabIds
         self.request = request
         self.badges = badges
         self.showTags = showTags
@@ -670,29 +674,32 @@ public struct FilterData : Equatable {
     }
     public func withUpdatedFilterId(_ filterId: Int32?) -> FilterData {
         let filter = self.tabs.first(where: { ChatListUIHooks.shared.chatListFilterId($0) == filterId }) ?? .allChats
-        return FilterData(filter: filter, tabs: self.tabs, sidebar: self.sidebar, showTags: self.showTags, request: self.request, badges: self.badges, requestTimestamp: self.requestTimestamp, isTop: self.isTop)
+        return FilterData(filter: filter, tabs: self.tabs, sidebar: self.sidebar, compactTabs: self.compactTabs, favoriteTabIds: self.favoriteTabIds, showTags: self.showTags, request: self.request, badges: self.badges, requestTimestamp: self.requestTimestamp, isTop: self.isTop)
     }
     public func withUpdatedFilter(_ filter: ChatListFilter?) -> FilterData {
         let filter = filter ?? self.tabs.first ?? .allChats
-        return FilterData(filter: filter, tabs: self.tabs, sidebar: self.sidebar, showTags: self.showTags, request: self.request, badges: self.badges, requestTimestamp: self.requestTimestamp, isTop: self.isTop)
+        return FilterData(filter: filter, tabs: self.tabs, sidebar: self.sidebar, compactTabs: self.compactTabs, favoriteTabIds: self.favoriteTabIds, showTags: self.showTags, request: self.request, badges: self.badges, requestTimestamp: self.requestTimestamp, isTop: self.isTop)
     }
     public func withUpdatedTabs(_ tabs:  [ChatListFilter]) -> FilterData {
-        return FilterData(filter: self.filter, tabs: tabs, sidebar: self.sidebar, showTags: self.showTags, request: self.request, badges: self.badges, requestTimestamp: self.requestTimestamp, isTop: self.isTop)
+        return FilterData(filter: self.filter, tabs: tabs, sidebar: self.sidebar, compactTabs: self.compactTabs, favoriteTabIds: self.favoriteTabIds, showTags: self.showTags, request: self.request, badges: self.badges, requestTimestamp: self.requestTimestamp, isTop: self.isTop)
     }
     public func withUpdatedSidebar(_ sidebar: Bool) -> FilterData {
-        return FilterData(filter: self.filter, tabs: self.tabs, sidebar: sidebar, showTags: self.showTags, request: self.request, badges: self.badges, requestTimestamp: self.requestTimestamp, isTop: self.isTop)
+        return FilterData(filter: self.filter, tabs: self.tabs, sidebar: sidebar, compactTabs: self.compactTabs, favoriteTabIds: self.favoriteTabIds, showTags: self.showTags, request: self.request, badges: self.badges, requestTimestamp: self.requestTimestamp, isTop: self.isTop)
+    }
+    public func withUpdatedFolderTabs(compactTabs: Bool, favoriteTabIds: [Int32]?) -> FilterData {
+        return FilterData(filter: self.filter, tabs: self.tabs, sidebar: self.sidebar, compactTabs: compactTabs, favoriteTabIds: favoriteTabIds, showTags: self.showTags, request: self.request, badges: self.badges, requestTimestamp: self.requestTimestamp, isTop: self.isTop)
     }
     public func withUpdatedShowTags(_ showTags: Bool) -> FilterData {
-        return FilterData(filter: self.filter, tabs: self.tabs, sidebar: self.sidebar, showTags: showTags, request: self.request, badges: self.badges, requestTimestamp: self.requestTimestamp, isTop: self.isTop)
+        return FilterData(filter: self.filter, tabs: self.tabs, sidebar: self.sidebar, compactTabs: self.compactTabs, favoriteTabIds: self.favoriteTabIds, showTags: showTags, request: self.request, badges: self.badges, requestTimestamp: self.requestTimestamp, isTop: self.isTop)
     }
     public func withUpdatedRequest(_ request: ChatListIndexRequest, removeAnimation: Bool) -> FilterData {
-        return FilterData(filter: self.filter, tabs: self.tabs, sidebar: sidebar, showTags: self.showTags, request: request, badges: self.badges, requestTimestamp: removeAnimation ? CACurrentMediaTime() : self.requestTimestamp, isTop: self.isTop)
+        return FilterData(filter: self.filter, tabs: self.tabs, sidebar: sidebar, compactTabs: self.compactTabs, favoriteTabIds: self.favoriteTabIds, showTags: self.showTags, request: request, badges: self.badges, requestTimestamp: removeAnimation ? CACurrentMediaTime() : self.requestTimestamp, isTop: self.isTop)
     }
     public func withUpdatedIsTop(_ isTop: Bool) -> FilterData {
-        return FilterData(filter: self.filter, tabs: self.tabs, sidebar: sidebar, showTags: self.showTags, request: request, badges: badges, requestTimestamp: self.requestTimestamp, isTop: isTop)
+        return FilterData(filter: self.filter, tabs: self.tabs, sidebar: sidebar, compactTabs: self.compactTabs, favoriteTabIds: self.favoriteTabIds, showTags: self.showTags, request: request, badges: badges, requestTimestamp: self.requestTimestamp, isTop: isTop)
     }
     public func withUpdatedBadges(_ badges: ChatListFilterBadges) -> FilterData {
-        return FilterData(filter: self.filter, tabs: self.tabs, sidebar: sidebar, showTags: self.showTags, request: request, badges: badges, requestTimestamp: self.requestTimestamp, isTop: self.isTop)
+        return FilterData(filter: self.filter, tabs: self.tabs, sidebar: sidebar, compactTabs: self.compactTabs, favoriteTabIds: self.favoriteTabIds, showTags: self.showTags, request: request, badges: badges, requestTimestamp: self.requestTimestamp, isTop: self.isTop)
     }
     
 }
@@ -1302,6 +1309,7 @@ public class ChatListController<Context: AccountContextProtocol> : PeersListCont
                     var current = current
                     current = current.withUpdatedTabs(filters.list)
                         .withUpdatedSidebar(filters.sidebar)
+                        .withUpdatedFolderTabs(compactTabs: filters.compactTabs, favoriteTabIds: filters.favoriteTabIds)
                         .withUpdatedShowTags(filters.showTags)
                     return current
                 } )
@@ -1313,6 +1321,7 @@ public class ChatListController<Context: AccountContextProtocol> : PeersListCont
                     var current = current
                     current = current.withUpdatedTabs(filters.list)
                         .withUpdatedSidebar(filters.sidebar)
+                        .withUpdatedFolderTabs(compactTabs: filters.compactTabs, favoriteTabIds: filters.favoriteTabIds)
                         .withUpdatedShowTags(filters.showTags)
                     if !first, let updated = filters.list.first(where: { ChatListUIHooks.shared.chatListFilterId($0) == ChatListUIHooks.shared.chatListFilterId(current.filter) }) {
                         current = current.withUpdatedFilter(updated)

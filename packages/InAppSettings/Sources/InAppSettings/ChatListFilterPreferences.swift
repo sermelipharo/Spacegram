@@ -45,21 +45,27 @@ public struct ChatListFoldersSettings: Codable {
     
     public let sidebar: Bool
     public let interacted: Bool
+    public let compactTabs: Bool
+    public let favoriteTabIds: [Int32]?
     public static var defaultValue: ChatListFoldersSettings {
         return ChatListFoldersSettings(sidebar: false, interacted: false)
     }
     
-    public init(sidebar: Bool, interacted: Bool) {
+    public init(sidebar: Bool, interacted: Bool, compactTabs: Bool = false, favoriteTabIds: [Int32]? = nil) {
         self.sidebar = sidebar
         self.interacted = interacted
+        self.compactTabs = compactTabs
+        self.favoriteTabIds = favoriteTabIds
     }
     
     
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: StringCodingKey.self)
 
-        self.sidebar = try container.decode(Int32.self, forKey: "t") == 1
+        self.sidebar = try container.decodeIfPresent(Int32.self, forKey: "t") == 1
         self.interacted = try container.decodeIfPresent(Int32.self, forKey: "i") == 1
+        self.compactTabs = try container.decodeIfPresent(Int32.self, forKey: "ct") == 1
+        self.favoriteTabIds = try container.decodeIfPresent([Int32].self, forKey: "ft")
     }
     
     public func encode(to encoder: Encoder) throws {
@@ -67,13 +73,21 @@ public struct ChatListFoldersSettings: Codable {
 
         try container.encode(Int32(self.sidebar ? 1 : 0), forKey: "t")
         try container.encode(Int32(self.interacted ? 1 : 0), forKey: "i")
+        try container.encode(Int32(self.compactTabs ? 1 : 0), forKey: "ct")
+        try container.encodeIfPresent(self.favoriteTabIds, forKey: "ft")
     }
     
     public func withUpdatedSidebar(_ sidebar: Bool) -> ChatListFoldersSettings {
-        return ChatListFoldersSettings(sidebar: sidebar, interacted: self.interacted)
+        return ChatListFoldersSettings(sidebar: sidebar, interacted: self.interacted, compactTabs: self.compactTabs, favoriteTabIds: self.favoriteTabIds)
     }
     public func withUpdatedSidebarInteracted(_ interacted: Bool) -> ChatListFoldersSettings {
-        return ChatListFoldersSettings(sidebar: self.sidebar, interacted: interacted)
+        return ChatListFoldersSettings(sidebar: self.sidebar, interacted: interacted, compactTabs: self.compactTabs, favoriteTabIds: self.favoriteTabIds)
+    }
+    public func withUpdatedCompactTabs(_ compactTabs: Bool) -> ChatListFoldersSettings {
+        return ChatListFoldersSettings(sidebar: self.sidebar, interacted: self.interacted, compactTabs: compactTabs, favoriteTabIds: self.favoriteTabIds)
+    }
+    public func withUpdatedFavoriteTabIds(_ favoriteTabIds: [Int32]?) -> ChatListFoldersSettings {
+        return ChatListFoldersSettings(sidebar: self.sidebar, interacted: self.interacted, compactTabs: self.compactTabs, favoriteTabIds: favoriteTabIds)
     }
 }
 
@@ -101,10 +115,14 @@ public struct ChatListFolders : Equatable {
     public let list: [ChatListFilter]
     public let sidebar: Bool
     public let showTags: Bool
-    public init(list: [ChatListFilter], sidebar: Bool, showTags: Bool) {
+    public let compactTabs: Bool
+    public let favoriteTabIds: [Int32]?
+    public init(list: [ChatListFilter], sidebar: Bool, showTags: Bool, compactTabs: Bool = false, favoriteTabIds: [Int32]? = nil) {
         self.list = list
         self.sidebar = sidebar
         self.showTags = showTags
+        self.compactTabs = compactTabs
+        self.favoriteTabIds = favoriteTabIds
     }
     
     public var isEmpty: Bool {
@@ -116,7 +134,7 @@ public func chatListFilterPreferences(engine: TelegramEngine) -> Signal<ChatList
     let showTags = engine.data.subscribe(TelegramEngine.EngineData.Item.ChatList.FiltersDisplayTags())
 
     return combineLatest(engine.peers.updatedChatListFilters(), chatListFolderSettings(engine.account.postbox), showTags) |> map {
-        return ChatListFolders(list: $0, sidebar: $1.sidebar, showTags: $2)
+        return ChatListFolders(list: $0, sidebar: $1.sidebar, showTags: $2, compactTabs: $1.compactTabs, favoriteTabIds: $1.favoriteTabIds)
     }
 }
 

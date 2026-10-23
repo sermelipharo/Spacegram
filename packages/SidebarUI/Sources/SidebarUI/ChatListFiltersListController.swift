@@ -23,7 +23,9 @@ private final class ChatListPresetArguments {
     let toggleSidebar: (Bool)->Void
     let limitExceeded:()->Void
     let toggleTags:(Bool)->Void
-    init(context: any AccountContextProtocol, environment: SidebarUIEnvironment, openPreset: @escaping(ChatListFilter, Bool)->Void, removePreset: @escaping(ChatListFilter)->Void, addFeatured: @escaping(ChatListFeaturedFilter)->Void, toggleSidebar: @escaping(Bool)->Void, limitExceeded:@escaping()->Void, toggleTags:@escaping(Bool)->Void) {
+    let toggleCompactTabs: (Bool) -> Void
+    let toggleFavoriteTab: (Int32, [Int32]) -> Void
+    init(context: any AccountContextProtocol, environment: SidebarUIEnvironment, openPreset: @escaping(ChatListFilter, Bool)->Void, removePreset: @escaping(ChatListFilter)->Void, addFeatured: @escaping(ChatListFeaturedFilter)->Void, toggleSidebar: @escaping(Bool)->Void, limitExceeded:@escaping()->Void, toggleTags:@escaping(Bool)->Void, toggleCompactTabs: @escaping(Bool) -> Void, toggleFavoriteTab: @escaping(Int32, [Int32]) -> Void) {
         self.context = context
         self.environment = environment
         self.openPreset = openPreset
@@ -32,6 +34,8 @@ private final class ChatListPresetArguments {
         self.toggleSidebar = toggleSidebar
         self.limitExceeded = limitExceeded
         self.toggleTags = toggleTags
+        self.toggleCompactTabs = toggleCompactTabs
+        self.toggleFavoriteTab = toggleFavoriteTab
     }
 }
 private func _id_preset(_ filter: ChatListFilter) -> InputDataIdentifier {
@@ -47,8 +51,9 @@ private let _id_badge_tabs = InputDataIdentifier("_id_badge_tabs")
 private let _id_header = InputDataIdentifier("_id_header")
 
 private let _id_show_tags = InputDataIdentifier("_id_show_tags")
+private let _id_favorite_tabs = InputDataIdentifier("_id_favorite_tabs")
 
-private func chatListPresetEntries(filtersWithCounts: [(ChatListFilter, Int)], sidebar: Bool, showTags: Bool, suggested: ChatListFiltersFeaturedState?, arguments: ChatListPresetArguments) -> [InputDataEntry] {
+private func chatListPresetEntries(filtersWithCounts: [(ChatListFilter, Int)], sidebar: Bool, showTags: Bool, compactTabs: Bool, favoriteTabIds: [Int32]?, suggested: ChatListFiltersFeaturedState?, arguments: ChatListPresetArguments) -> [InputDataEntry] {
     var entries: [InputDataEntry] = []
 
     var sectionId:Int32 = 0
@@ -74,6 +79,11 @@ private func chatListPresetEntries(filtersWithCounts: [(ChatListFilter, Int)], s
 
     entries.append(.desc(sectionId: sectionId, index: index, text: .plain(strings().chatListFilterListHeader), data: .init(color: theme.colors.listGrayText, detectBold: true, viewType: .textTopItem)))
     index += 1
+
+    var favoriteFolders = filtersWithCounts.map { $0.0 }
+    if !favoriteFolders.contains(where: { $0.isAllChats }) {
+        favoriteFolders.insert(.allChats, at: 0)
+    }
 
     let filtersWithCounts = filtersWithCounts.filter { filter, _ in
         if !arguments.context.isPremium {
@@ -234,6 +244,33 @@ private func chatListPresetEntries(filtersWithCounts: [(ChatListFilter, Int)], s
         entries.append(.desc(sectionId: sectionId, index: index, text: .plain(strings().chatListFilterTabBarDesc), data: .init(color: theme.colors.listGrayText, detectBold: true, viewType: .textBottomItem)))
         index += 1
 
+        if !sidebar {
+            entries.append(.general(sectionId: sectionId, index: index, value: .none, error: nil, identifier: _id_favorite_tabs, data: .init(name: strings().chatListFolderFavoriteTabs, color: theme.colors.text, type: .switchable(compactTabs), viewType: .singleItem, action: {
+                arguments.toggleCompactTabs(!compactTabs)
+            }, autoswitch: false)))
+            index += 1
+
+            entries.append(.desc(sectionId: sectionId, index: index, text: .plain(strings().chatListFolderFavoriteTabsInfo), data: .init(color: theme.colors.listGrayText, detectBold: true, viewType: .textBottomItem)))
+            index += 1
+
+            if compactTabs {
+                entries.append(.sectionId(sectionId, type: .normal))
+                sectionId += 1
+
+                entries.append(.desc(sectionId: sectionId, index: index, text: .plain(strings().chatListFolderFavoriteFolders), data: .init(color: theme.colors.listGrayText, detectBold: true, viewType: .textTopItem)))
+                index += 1
+
+                let defaultFavoriteIds = Array(favoriteFolders.prefix(4).map { $0.sidebarId })
+                let selectedFavoriteIds = Set(favoriteTabIds ?? defaultFavoriteIds)
+                for (folderIndex, filter) in favoriteFolders.enumerated() {
+                    entries.append(.general(sectionId: sectionId, index: index, value: .none, error: nil, identifier: InputDataIdentifier("_id_favorite_folder_\(filter.sidebarId)"), data: .init(name: filter.title, color: theme.colors.text, type: .selectableLeft(selectedFavoriteIds.contains(filter.sidebarId)), viewType: bestGeneralViewType(favoriteFolders, for: folderIndex), action: {
+                        arguments.toggleFavoriteTab(filter.sidebarId, defaultFavoriteIds)
+                    })))
+                    index += 1
+                }
+            }
+        }
+
         entries.append(.sectionId(sectionId, type: .normal))
         sectionId += 1
     }
@@ -280,21 +317,35 @@ public func ChatListFiltersListController(context: any AccountContextProtocol, e
             context.engine.peers.updateChatListFiltersDisplayTags(isEnabled: value)
         }
 
+    }, toggleCompactTabs: { compactTabs in
+        _ = updateChatListFolderSettings(context.account.postbox, {
+            $0.withUpdatedCompactTabs(compactTabs)
+        }).start()
+    }, toggleFavoriteTab: { id, defaultFavoriteIds in
+        _ = updateChatListFolderSettings(context.account.postbox, { settings in
+            var ids = settings.favoriteTabIds ?? defaultFavoriteIds
+            if ids.contains(id) {
+                ids.removeAll(where: { $0 == id })
+            } else {
+                ids.append(id)
+            }
+            return settings.withUpdatedFavoriteTabIds(ids)
+        }).start()
     })
 
 
     let filtersWithCounts = combineLatest(
         chatListFilterPreferences(engine: context.engine) |> distinctUntilChanged,
         environment.filterPredicates
-    ) |> mapToSignal { filters, predicateForFilter -> Signal<([(ChatListFilter, Int)], Bool), NoError> in
-        return context.account.postbox.transaction { transaction -> ([(ChatListFilter, Int)], Bool) in
+    ) |> mapToSignal { filters, predicateForFilter -> Signal<([(ChatListFilter, Int)], ChatListFolders), NoError> in
+        return context.account.postbox.transaction { transaction -> ([(ChatListFilter, Int)], ChatListFolders) in
             return (filters.list.map { filter -> (ChatListFilter, Int) in
                 if let predicate = predicateForFilter(filter) {
                     return (filter, transaction.getChatCountMatchingPredicate(predicate))
                 } else {
                     return (filter, 0)
                 }
-            }, filters.sidebar)
+            }, filters)
         }
     }
 
@@ -305,7 +356,7 @@ public func ChatListFiltersListController(context: any AccountContextProtocol, e
     let showTags = context.engine.data.subscribe(TelegramEngine.EngineData.Item.ChatList.FiltersDisplayTags())
 
     let dataSignal = combineLatest(queue: prepareQueue, appearanceSignal, filtersWithCounts, suggested, showTags) |> map { _, filtersWithCounts, suggested, showTags in
-        return chatListPresetEntries(filtersWithCounts: filtersWithCounts.0, sidebar: filtersWithCounts.1, showTags: showTags, suggested: suggested, arguments: arguments)
+        return chatListPresetEntries(filtersWithCounts: filtersWithCounts.0, sidebar: filtersWithCounts.1.sidebar, showTags: showTags, compactTabs: filtersWithCounts.1.compactTabs, favoriteTabIds: filtersWithCounts.1.favoriteTabIds, suggested: suggested, arguments: arguments)
     } |> map { entries in
         return InputDataSignalValue(entries: entries)
     }

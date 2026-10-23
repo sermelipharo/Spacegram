@@ -6060,6 +6060,10 @@ public final class L10n {
   public static var chatListFolderDisableAnimations: String  { return L10n.tr("Localizable", "ChatList.Folder.DisableAnimations") }
   /// enable animations
   public static var chatListFolderEnableAnimations: String  { return L10n.tr("Localizable", "ChatList.Folder.EnableAnimations") }
+  public static var chatListFolderFavoriteFolders: String  { return L10n.tr("Localizable", "ChatList.Folder.FavoriteFolders") }
+  public static var chatListFolderFavoriteTabs: String  { return L10n.tr("Localizable", "ChatList.Folder.FavoriteTabs") }
+  public static var chatListFolderFavoriteTabsInfo: String  { return L10n.tr("Localizable", "ChatList.Folder.FavoriteTabsInfo") }
+  public static var chatListFolderMoreFolders: String  { return L10n.tr("Localizable", "ChatList.Folder.MoreFolders") }
   /// Subscribe to Telegram Premium to add colors for your folders.
   public static var chatListFolderPremiumAlert: String  { return L10n.tr("Localizable", "ChatList.Folder.PremiumAlert") }
   /// Show Folder Tags

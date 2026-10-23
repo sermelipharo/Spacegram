@@ -171,7 +171,7 @@ final class SupportAccountContext {
         let showTags = TelegramEngine(account: account).data.get(TelegramEngine.EngineData.Item.ChatList.FiltersDisplayTags())
 
         let data = combineLatest(TelegramEngine(account: account).peers.updatedChatListFilters(), chatListFolderSettings(account.postbox), showTags) |> map {
-            return ChatListFolders(list: $0, sidebar: $1.sidebar, showTags: $2)
+            return ChatListFolders(list: $0, sidebar: $1.sidebar, showTags: $2, compactTabs: $1.compactTabs, favoriteTabIds: $1.favoriteTabIds)
         }
         |> deliverOnMainQueue
         |> take(1)

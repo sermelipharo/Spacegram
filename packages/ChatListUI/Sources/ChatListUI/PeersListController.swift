@@ -1229,7 +1229,7 @@ public class PeerListContainerView : Control {
         }
         
         if !state.filterData.isEmpty && !state.filterData.sidebar, state.splitState != .minimisize, state.mode == .plain, state.searchState == .None {
-            self.foldersItem = .init(frame.size, context: arguments.context, tabs: state.filterData.tabs, selected: state.filterData.filter, counters: state.filterData.badges, action: arguments.setupFilter, openSettings: {
+            self.foldersItem = .init(frame.size, context: arguments.context, tabs: state.filterData.tabs, selected: state.filterData.filter, counters: state.filterData.badges, compactTabs: state.filterData.compactTabs, favoriteTabIds: state.filterData.favoriteTabIds, action: arguments.setupFilter, openSettings: {
                 arguments.openFilterSettings(.allChats)
             }, menuItems: arguments.tabsMenuItems, getCurrentStoriesState: { [weak self] in
                 if let state = self?.arguments?.getStoryInterfaceState(), let tableView = self?.tableView {
