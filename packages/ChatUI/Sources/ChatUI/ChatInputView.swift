@@ -99,9 +99,6 @@ public final class ChatInputContainerView: FlippableView {
     public let textView: UITextView
     public let attachView: ChatInputAttachButton
 
-    /// Top-right "open in rich editor" affordance, shown when the input grows to 4+ lines (mirrors the AI
-    /// button trigger). Clicking opens the rich editor with the current input (works even for plain text).
-    /// Created lazily (only while shown).
     fileprivate var expandRichButton: ImageButton?
     public var openRichEditor: (() -> Void)?
 
@@ -209,6 +206,22 @@ public final class ChatInputContainerView: FlippableView {
 
     public var accessoryHeight: CGFloat {
         accessory.isVisibility() ? 10 + accessory.size.height : 0
+    }
+
+    private var shouldShowAIEditor: Bool {
+        let presentation = chatInteraction.presentation
+        return (presentation.state == .normal || presentation.state == .editing)
+            && (presentation.interfaceState.editState?.loadingState ?? EditStateLoading.none) == EditStateLoading.none
+            && presentation.peer?.isSecretChat != true
+            && presentation.effectiveInput.inputText.trimmingCharacters(in: .whitespacesAndNewlines).count >= 10
+    }
+
+    fileprivate func inputRowHeight(for width: CGFloat) -> CGFloat {
+        let contentHeight = contentHeight(for: width)
+        guard shouldShowAIEditor, chatInteraction.mode.customChatLink == nil else {
+            return contentHeight
+        }
+        return max(contentHeight, ChatInputAttachButton.expandedHeight)
     }
 
     public func contentHeight(for width: CGFloat) -> CGFloat {
@@ -341,7 +354,7 @@ public final class ChatInputContainerView: FlippableView {
         let edge: CGFloat = 12
         let gap: CGFloat = 10
 
-        transition.updateFrame(view: contentView, frame: NSMakeRect(0, contentY, size.width, contentHeight))
+        transition.updateFrame(view: contentView, frame: NSMakeRect(0, contentY, size.width, inputRowHeight(for: size.width)))
 
         var leftInset: CGFloat = 0
         if let view = botMenuView, let botMenu = chatInteraction.presentation.botMenu {
@@ -362,12 +375,7 @@ public final class ChatInputContainerView: FlippableView {
         let (textSize, textHeight) = textViewSize(size.width)
         let accessoryHeight = self.accessoryHeight
 
-        // The AI (rephrase) button lives in the attach view and appears once the input has grown to 4+
-        // lines; the attach view then expands into a vertical pill to hold it (glass ghost follows).
-        let showAi = (chatInteraction.presentation.state == .normal || chatInteraction.presentation.state == .editing)
-            && (chatInteraction.presentation.interfaceState.editState?.loadingState ?? EditStateLoading.none) == EditStateLoading.none
-            && chatInteraction.presentation.peer?.isSecretChat != true
-            && textView.numberOfLines(for: textSize.width) >= 4
+        let showAi = shouldShowAIEditor
 
         let sendAsInset: CGFloat = sendAsView != nil ? 34 + 3 : 0
         let sendSize = sendButton.desiredSize
@@ -499,7 +507,10 @@ public final class ChatInputContainerView: FlippableView {
             textView.updateLayout(size: textRect.size, textHeight: textHeight, transition: transition)
         }
 
-        let showExpand = ((showAi && chatInteraction.presentation.state == .normal) || richDraftPreview != nil) && chatInteraction.interactionContext.appConfiguration.isRichTextEditorEnabled
+        let showExpand = ((chatInteraction.presentation.state == .normal
+            && chatInteraction.presentation.peer?.isSecretChat != true
+            && textView.numberOfLines(for: textSize.width) >= 4) || richDraftPreview != nil)
+            && chatInteraction.interactionContext.appConfiguration.isRichTextEditorEnabled
         if showExpand {
             let current: ImageButton
             var isNew = false
@@ -1006,7 +1017,7 @@ public class ChatInputView: View, Notifable {
     public static let inputBottomInset: CGFloat = 12
 
     public func height(for width: CGFloat) -> CGFloat {
-        let contentHeight:CGFloat = contentHeight(for: width)
+        let contentHeight:CGFloat = container.inputRowHeight(for: width)
         var sumHeight:CGFloat = contentHeight + ChatInputView.inputBottomInset
         if let markup = replyMarkupModel  {
             bottomHeight = min(

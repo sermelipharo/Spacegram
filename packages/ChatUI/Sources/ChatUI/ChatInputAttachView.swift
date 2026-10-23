@@ -55,7 +55,6 @@ public final class ChatInputAttachButton: View, MorphHoldObserving {
     public static let expandedHeight: CGFloat = 74
 
     public let button: ImageButton = ImageButton()
-    /// AI (rephrase/translate) button — present only while the input has grown to several lines.
     public private(set) var aiButton: ImageButton?
     public var isAIVisible: Bool { aiButton != nil }
 
