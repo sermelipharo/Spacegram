@@ -87,26 +87,16 @@ private final class LeftSidebarArguments {
 }
 
 
-public final class LeftSidebarView: LiquidGlassView {
+public final class LeftSidebarView: View {
     fileprivate let tableView = TableView()
     fileprivate var environment: SidebarUIEnvironment?
     fileprivate let edit = ImageButton()
 
-    /// 20pt on macOS 26+ to match the liquid-glass look (on macOS 27 the
-    /// window radius is raised to 28pt through private API, keeping this
-    /// inset sidebar concentric). Older systems keep the subtle 8pt.
-    private static var glassCornerRadius: CGFloat {
-        if #available(macOS 26.0, *) {
-            return 20
-        }
-        return 8
-    }
-    public static let inset = NSEdgeInsets(top: 8, left: 8, bottom: 8, right: 0)
+    public static let inset = NSEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
 
     public required init(frame frameRect: NSRect) {
-        super.init(frame: frameRect, cornerRadius: LeftSidebarView.glassCornerRadius, hasShadow: false, hasBorder: true, tintAlpha: 0.65)
-
-        backgroundColor = .clear
+        super.init(frame: frameRect)
+        layer?.masksToBounds = false
 
         addSubview(tableView)
         addSubview(edit)
@@ -124,6 +114,7 @@ public final class LeftSidebarView: LiquidGlassView {
     public override func updateLocalizationAndTheme(theme: PresentationTheme) {
         super.updateLocalizationAndTheme(theme: theme)
         let theme = theme as! TelegramPresentationTheme
+        backgroundColor = theme.colors.background
         edit.set(image: theme.icons.folders_sidebar_edit, for: .Normal)
         edit.borderColor = theme.colors.grayIcon.withAlphaComponent(0.1)
         needsLayout = true

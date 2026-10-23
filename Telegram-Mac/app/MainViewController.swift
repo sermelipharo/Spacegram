@@ -300,57 +300,10 @@ final class UpdateTabController: GenericViewController<UpdateTabView> {
 
 
 final class MainController_View: View {
-    private let bgView: View = View()
-    private let glassView: LiquidGlassView
-
-    /// 20pt on macOS 26+ to match the liquid-glass aesthetic (on macOS 27
-    /// the window radius is raised to 28pt through private API, keeping
-    /// this inset pane concentric). Older systems keep the subtle 8pt.
-    private static var containerCornerRadius: CGFloat {
-        if #available(macOS 26.0, *) {
-            return 20
-        }
-        return 8
-    }
-
-    /// In single-window mode the surrounding chrome is smaller, so the
-    /// inner corner shrinks to match: 14pt on macOS Tahoe (liquid glass),
-    /// 4pt on older systems where the curve is already subtle.
-    var compactCorners: Bool = false {
-        didSet {
-            if compactCorners != oldValue {
-                applyCornerRadius()
-            }
-        }
-    }
-
-    private var currentCornerRadius: CGFloat {
-        if compactCorners {
-            return 0
-        }
-        return MainController_View.containerCornerRadius
-    }
-
-    private func applyCornerRadius() {
-        let radius = currentCornerRadius
-        bgView.layer?.cornerRadius = radius
-        glassView.cornerRadius = radius
-    }
-
     required init(frame frameRect: NSRect) {
-        let cornerRadius = MainController_View.containerCornerRadius
-        glassView = LiquidGlassView(frame: frameRect.size.bounds, cornerRadius: cornerRadius, hasShadow: true, hasBorder: true, tintAlpha: 0, customTint: presentation.colors.background, forceBlur: true)
         super.init(frame: frameRect)
-
-        self.layer?.masksToBounds = false
-        self.backgroundColor = .clear
-
-        bgView.backgroundColor = presentation.colors.background
-        bgView.layer?.cornerRadius = cornerRadius
-        bgView.layer?.masksToBounds = true
-
-        addSubview(bgView)
-        addSubview(glassView)
+        layer?.masksToBounds = false
+        backgroundColor = presentation.colors.background
     }
 
     required init?(coder: NSCoder) {
@@ -359,19 +312,7 @@ final class MainController_View: View {
 
     override func updateLocalizationAndTheme(theme: PresentationTheme) {
         super.updateLocalizationAndTheme(theme: theme)
-        bgView.backgroundColor = theme.colors.background
-        glassView.customTint = theme.colors.background
-    }
-
-    override func layout() {
-        super.layout()
-        updateLayout(size: bounds.size, transition: .immediate)
-    }
-
-    func updateLayout(size: NSSize, transition: ContainedViewLayoutTransition) {
-        transition.updateFrame(view: bgView, frame: CGRect(origin: .zero, size: size))
-        transition.updateFrame(view: glassView, frame: CGRect(origin: .zero, size: size))
-        glassView.updateLayout(size: size, transition: transition)
+        backgroundColor = theme.colors.background
     }
 }
 
@@ -402,7 +343,6 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
 
     override func viewDidResized(_ size: NSSize) {
         super.viewDidResized(size)
-        self.genericView.updateLayout(size: bounds.size, transition: .immediate)
         tabController.view.frame = bounds
         self.navigation.frame = bounds
         self.contacts.frame = bounds
