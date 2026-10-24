@@ -8,6 +8,7 @@ final class InputContextControllerFixture {
 
 final class InputContextFixture {
     let controller = InputContextControllerFixture()
+    func updateLayout(animated: Bool) {}
 }
 
 final class NativeSearchFixture: View {

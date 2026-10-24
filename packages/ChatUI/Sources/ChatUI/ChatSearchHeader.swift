@@ -1371,9 +1371,7 @@ class ChatSearchHeader : View, Notifable, ChatHeaderProtocol {
 
         transition.updateFrame(view: cancel, frame: cancel.centerFrameY(x: x))
 
-        let inputContextView = inputContextHelper.controller.view
-        let rect = CGRect(origin: inputContextHelper.controller.frame.origin, size: NSSize(width: size.width, height: inputContextHelper.controller.frame.height))
-        transition.updateFrame(view: inputContextView, frame: rect)
+        inputContextHelper.updateLayout(animated: transition.isAnimated)
 
         if let tagsView = tagsView {
             transition.updateFrame(view: tagsView, frame: NSMakeRect(0, 35, size.width, 40))

@@ -1,0 +1,114 @@
+import argparse
+import json
+import plistlib
+import shutil
+from pathlib import Path
+import subprocess
+import tempfile
+
+root = Path(__file__).resolve().parents[3]
+fixtures = Path(__file__).resolve().parent
+parser = argparse.ArgumentParser()
+parser.add_argument('--revision')
+parser.add_argument('--expect-regression', action='store_true')
+parser.add_argument('--prepare-app', action='store_true')
+parser.add_argument('--scratch-path', type=Path, required=True)
+args = parser.parse_args()
+
+
+def source(name):
+    path = 'packages/ChatUI/Sources/ChatUI/' + name + '.swift'
+    return subprocess.check_output(['git', 'show', args.revision + ':' + path], cwd=root, text=True) if args.revision else (root / path).read_text()
+
+
+def block(text, marker):
+    start = text.index(marker)
+    end = text.index('{', start) + 1
+    depth = 1
+    while depth:
+        depth += (text[end] == '{') - (text[end] == '}')
+        end += 1
+    return text[start:end]
+
+
+has_updated_helper = 'public func updateLayout(animated: Bool)' in source('InputContextHelper')
+imports = 'import Cocoa\nimport TGUIKit\nimport ColorPalette\nimport SwiftSignalKit\n'
+with tempfile.TemporaryDirectory(prefix='telegram-search-integration-') as directory:
+    directory = Path(directory)
+    sources = directory / 'Sources'
+    sources.mkdir()
+    packages = ['.package(path: ' + json.dumps(str(root / 'packages' / name)) + ')' for name in ['TGUIKit', 'ColorPalette']]
+    packages.append('.package(path: ' + json.dumps(str(root / 'submodules/telegram-ios/submodules/SSignalKit')) + ')')
+    (directory / 'Package.swift').write_text('''// swift-tools-version:5.9
+import PackageDescription
+let package = Package(name: "SearchIntegration", platforms: [.macOS(.v12)], dependencies: [DEPENDENCIES], targets: [.executableTarget(name: "SearchIntegration", dependencies: ["TGUIKit", "ColorPalette", .product(name: "SwiftSignalKit", package: "SSignalKit")], path: "Sources", swiftSettings: SETTINGS)])
+'''.replace('DEPENDENCIES', ', '.join(packages)).replace('SETTINGS', '[.define("UPDATED_SEARCH_POPUP_LAYOUT")]' if has_updated_helper else '[]'))
+    header = source('ChatSearchHeader')
+    header = imports + header[header.index('private final class CSearchContextState'):header.index('private final class ChatSearchTagsView')] + header[header.index('class ChatSearchHeader :'):]
+    header += '''
+extension ChatSearchHeader {
+ var testSearchView: ChatSearchView { searchView }
+ var testContext: InputContextHelper { inputContextHelper }
+ var testPeerId: PeerId? { inputInteraction.state.peerId }
+ var testButtons: [ImageButton] { [prev, next, from, calendar, cancel] }
+}
+'''
+    (sources / 'Header.swift').write_text(header)
+    search = source('ChatSearchView')
+    (sources / 'SearchView.swift').write_text(imports + '\n'.join(line for line in search.splitlines() if not line.startswith('import ')))
+    helper = source('InputContextHelper')
+    view = helper[helper.index('public class InputContextView :'):helper.index('public class InputContextViewController :')]
+    (sources / 'ResultView.swift').write_text(imports + view)
+    start = helper.index('        controller._frameRect =', helper.index('public func context(with'))
+    end = helper.index('        var currentResult = result', start)
+    attach_start = helper.index('            if show, let relativeView = relativeView, let view = view {')
+    attach_end = helper.index('\n\n        }))', attach_start)
+    parts = {
+        '__CONTEXT_LAYOUT__': block(helper, 'public func layout(_ animated:Bool)'),
+        '__LAYOUT_CONTAINER__': block(helper, 'fileprivate func layoutAccessoryContainer()'),
+        '__HELPER_LAYOUT__': block(helper, 'public func updateLayout(animated: Bool)') if 'public func updateLayout(animated: Bool)' in helper else '',
+        '__CONTEXT_PREPARE__': helper[start:end],
+        '__CONTEXT_ATTACH__': helper[attach_start:attach_end],
+    }
+    results = (fixtures / 'Results.swift').read_text()
+    for marker, value in parts.items():
+        results = results.replace(marker, value)
+    (sources / 'Results.swift').write_text(results)
+    (sources / 'InlineLayout.swift').write_text(source('ChatHeaderInlineLayout'))
+    geometry = '''import AppKit
+struct HeaderFixture { var state: ChatHeaderState }
+struct BubbleGeometry {
+ func inlineHeaderFrame(for width: CGFloat) -> NSRect? {
+  ChatHeaderInlineLayout.accessoryFrame(in: NSMakeRect(12, 12, width - 122, 40), preferredTitleWidth: 260, spacing: 10)
+ }
+}
+struct ControllerGeometry {
+ let header: HeaderFixture
+ let bubblesView = BubbleGeometry()
+ __INLINE_FRAME__
+}
+'''
+    (sources / 'Geometry.swift').write_text(geometry.replace('__INLINE_FRAME__', block(source('ChatController'), 'private func inlineHeaderFrame(for width:').replace('private ', '')))
+    images = {}
+    for name in ['Icon_SearchField', 'Icon_SearchClear', 'Icon_Quote', 'Icon_Quote_Collapse', 'Icon_Quote_Expand', 'Icon_SearchArrow', 'Icon_Calendar', 'Icon_Pip_Close', 'Icon_ChatSearchFrom']:
+        image_set = root / 'Telegram-Mac/Assets.xcassets' / (name + '.imageset')
+        variants = json.loads((image_set / 'Contents.json').read_text())['images']
+        filename = next(image['filename'] for image in variants if image.get('filename') and image.get('scale') == '1x')
+        images[name] = str(image_set / filename)
+    (sources / 'Assets.swift').write_text('let imagePaths: [String: String] = [' + ', '.join(json.dumps(name) + ': ' + json.dumps(path) for name, path in images.items()) + ']')
+    for name in ['Models.swift', 'main.swift']:
+        (sources / name).write_text((fixtures / name).read_text())
+    command = ['swift', 'run', '--package-path', str(directory), '--scratch-path', str(args.scratch_path.resolve()), '--disable-sandbox', '--jobs', '4', 'SearchIntegration']
+    if args.expect_regression:
+        command.append('--expect-regression')
+    if args.prepare_app:
+        build = ['swift', 'build', '--package-path', str(directory), '--scratch-path', str(args.scratch_path.resolve()), '--disable-sandbox', '--jobs', '4', '--product', 'SearchIntegration']
+        subprocess.run(build, check=True)
+        binary_dir = subprocess.check_output(['swift', 'build', '--package-path', str(directory), '--scratch-path', str(args.scratch_path.resolve()), '--show-bin-path'], text=True).strip()
+        bundle = args.scratch_path.resolve() / 'SearchIntegration.app'
+        (bundle / 'Contents/MacOS').mkdir(parents=True, exist_ok=True)
+        shutil.copy2(Path(binary_dir) / 'SearchIntegration', bundle / 'Contents/MacOS/SearchIntegration')
+        (bundle / 'Contents/Info.plist').write_bytes(plistlib.dumps({'CFBundleIdentifier': 'local.codex.telegram.SearchIntegration', 'CFBundleName': 'Telegram Search Validation', 'CFBundleExecutable': 'SearchIntegration', 'CFBundlePackageType': 'APPL', 'CFBundleVersion': '1'}))
+        print('Native fixture app: ' + str(bundle))
+    else:
+        raise SystemExit(subprocess.run(command).returncode)

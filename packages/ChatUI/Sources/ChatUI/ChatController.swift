@@ -985,7 +985,13 @@ public class ChatControllerView : View, ChatInputDelegate {
     }
 
     private func inlineHeaderFrame(for width: CGFloat) -> NSRect? {
-        return header.state.canDisplayInline ? bubblesView.inlineHeaderFrame(for: width) : nil
+        guard header.state.canDisplayInline, let frame = bubblesView.inlineHeaderFrame(for: width) else {
+            return nil
+        }
+        if case .search = header.state.main, frame.width < ChatHeaderInlineLayout.minimumSearchAccessoryWidth {
+            return nil
+        }
+        return frame
     }
 
     private var previousHeaderInsets: (stick: CGFloat, content: CGFloat)?

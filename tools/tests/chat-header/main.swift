@@ -20,14 +20,18 @@ for width: CGFloat in [1100, 800, 650, 520, 350, 900] {
     let insets = (controller.tableView.stick, controller.tableView.contentInsets.top)
     controller.header.state.main = .search(0, nil, nil, nil, nil, 0)
     controller.updateHeaderInsets(width: width, animated: false)
-    check(controller.headerFrame() == pinned, "opening search changed the header slot")
-    check(controller.tableView.stick == insets.0 && controller.tableView.contentInsets.top == insets.1, "opening search shifted history")
-    if let inline = controller.bubblesView.inlineHeaderFrame(for: width) {
-        check(pinned == inline, "search/pin missed inline frame")
+    let searchFrame = controller.headerFrame()
+    if searchFrame == pinned {
+        check(controller.tableView.stick == insets.0 && controller.tableView.contentInsets.top == insets.1, "inline search shifted history")
+    } else {
+        check(searchFrame.minY == 62 && searchFrame.width > pinned.width, "search did not fall back to a usable full row")
+    }
+    if let inline = controller.inlineHeaderFrame(for: width) {
+        check(searchFrame == inline, "search missed inline frame")
         check(controller.headerHeight == 0, "inline header reserved another row")
         check(pinned.width >= 320 && pinned.maxX <= width, "inline controls overflowed")
     } else {
-        check(pinned.minY == 62 && controller.headerHeight == 40, "narrow search did not use safe fallback")
+        check(searchFrame.minY == 62 && controller.headerHeight == 40, "narrow search did not use safe fallback")
     }
     let calls = controller.tableView.calls
     controller.updateHeaderInsets(width: width, animated: false)

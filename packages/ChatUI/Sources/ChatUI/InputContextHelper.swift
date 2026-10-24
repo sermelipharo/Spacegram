@@ -810,11 +810,13 @@ public class InputContextViewController : GenericViewController<InputContextView
     
     public func layout(_ animated:Bool) {
         if let superview = superview, let relativeView = genericView.relativeView {
-            var height = getHeight?() ?? min(superview.frame.height - 50 - relativeView.frame.height, floor(superview.frame.height / 2))
+            let relativeRect = relativeView.convert(relativeView.bounds, to: superview)
+            let availableHeight = max(0, (genericView.position == .above ? relativeRect.minY : superview.bounds.maxY - relativeRect.maxY) - 10)
+            var height = min(getHeight?() ?? floor(superview.frame.height / 2), availableHeight)
             if genericView.tableView.firstItem is ContextClueRowItem {
                 height = min(height, 120)
             }
-            let future = NSMakeSize(superview.frame.width, min(genericView.tableView.listHeight, height))
+            let future = NSMakeSize(relativeRect.width, min(genericView.tableView.listHeight, height))
             genericView.change(size: future, animated: animated, duration: future.height > frame.height || genericView.position == .below ? 0 : 0.5)
             
             self.updatedSize?(future, animated)
@@ -875,6 +877,17 @@ public class InputContextHelper: NSObject {
         if size.width > 0 {
             controller.view.frame = NSRect(origin: .zero, size: size)
         }
+    }
+
+    public func updateLayout(animated: Bool) {
+        guard accessoryView != nil, let view = controller.superview, let relativeView = controller.genericView.relativeView else {
+            return
+        }
+        controller.layout(animated)
+        let relativeRect = relativeView.convert(relativeView.bounds, to: view)
+        let y = controller.genericView.position == .above ? relativeRect.minY - accessoryContainerView.frame.height - 10 : relativeRect.maxY + 10
+        accessoryContainerView._change(pos: NSMakePoint(relativeRect.minX, y), animated: animated, duration: 0.4, timingFunction: .spring, forceAnimateIfHasAnimation: true)
+        layoutAccessoryContainer()
     }
     
     public func viewWillRemove() {
