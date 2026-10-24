@@ -6,7 +6,8 @@ import TelegramTheme
 import LocalAnimations
 
 func chatTranslationMenuItem(chatInteraction: ChatInteraction) -> ContextMenuItem? {
-    guard let translate = chatInteraction.presentation.translateState, translate.canTranslate else {
+    guard chatInteraction.presentation.peer?.restrictionText(chatInteraction.presentation.contentSettings) == nil,
+          let translate = chatInteraction.presentation.translateState, translate.canTranslate else {
         return nil
     }
     let item = ContextMenuItem(strings().voiceOverCommonTranslate, state: translate.translate ? .on : nil, itemImage: MenuAnimation.menu_translate.value)
