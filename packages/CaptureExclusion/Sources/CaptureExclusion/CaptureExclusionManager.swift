@@ -137,41 +137,6 @@ public final class CaptureExclusionManager {
     }
 
     private func reapply(for window: NSWindow) {
-        let key = ObjectIdentifier(window)
-        guard let tokens = windowTokens[key], !tokens.isEmpty else { return }
-
-        var combined: CGRect?
-        for token in tokens {
-            guard let entry = entries[token] else { continue }
-            let rect: CGRect
-            switch entry.source {
-            case .fullWindow:
-                rect = CGRect(x: 0, y: 0, width: window.frame.width, height: window.frame.height)
-            case .view(let weakView):
-                guard let view = weakView.view, view.window === window else { continue }
-
-                guard let superview = view.superview else { continue }
-                let windowRect = superview.convert(view.frame, to: nil)
-                if windowRect.isEmpty { continue }
-                rect = CGRect(
-                    x: windowRect.origin.x,
-                    y: window.frame.height - windowRect.maxY,
-                    width: windowRect.width,
-                    height: windowRect.height
-                )
-            }
-            if let existing = combined {
-                combined = existing.union(rect)
-            } else {
-                combined = rect
-            }
-        }
-
-        if let combined = combined {
-            DispatchQueue.main.async {
-                setWindowCaptureExclusion(window, combined, true)
-            }
-        }
     }
 
     private func removeObservers(for token: Token) {
