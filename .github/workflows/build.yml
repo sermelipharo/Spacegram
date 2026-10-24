@@ -15,8 +15,12 @@ jobs:
     timeout-minutes: 360
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
+
+      - name: Fetch submodules
+        run: |
+          git config submodule.third-party/twidget.update none
+          git config submodule.third-party/widget-sandbox.update none
+          git submodule update --init --recursive
 
       - name: Select Xcode
         run: |
