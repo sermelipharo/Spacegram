@@ -1,0 +1,78 @@
+name: Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [patches]
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Select Xcode
+        run: |
+          XCODE="$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)"
+          sudo xcode-select -s "$XCODE/Contents/Developer"
+          xcodebuild -version
+
+      - name: Install Rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Prepare build environment
+        run: sh scripts/setup_build_env.sh
+
+      - name: Override API credentials
+        env:
+          TG_API_ID: ${{ secrets.TG_API_ID }}
+          TG_API_HASH: ${{ secrets.TG_API_HASH }}
+        run: |
+          if [ -n "$TG_API_ID" ] && [ -n "$TG_API_HASH" ]; then
+            f=packages/ApiCredentials/Sources/ApiCredentials/Config.swift
+            sed -i '' -E "s/return [0-9]+$/return $TG_API_ID/; s/return \"[0-9a-f]{32}\"/return \"$TG_API_HASH\"/" "$f"
+            git diff --stat -- "$f"
+          else
+            echo "Using upstream API credentials"
+          fi
+
+      - name: Build native libraries
+        env:
+          CMAKE_POLICY_VERSION_MINIMUM: "3.5"
+        run: sh scripts/configure_frameworks.sh
+
+      - name: Build app
+        run: |
+          xcodebuild \
+            -workspace Telegram-Mac.xcworkspace \
+            -scheme Telegram \
+            -configuration Debug \
+            -derivedDataPath build \
+            CODE_SIGN_IDENTITY=- \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=YES \
+            DEVELOPMENT_TEAM= \
+            PROVISIONING_PROFILE_SPECIFIER= \
+            CODE_SIGN_ENTITLEMENTS="$PWD/ci/Telegram-adhoc.entitlements" \
+            build
+
+      - name: Package
+        run: |
+          APP="$(find build/Build/Products -maxdepth 2 -name '*.app' | head -1)"
+          echo "Built: $APP"
+          ditto -c -k --keepParent "$APP" Telegram-patched.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Telegram-patched
+          path: Telegram-patched.zip
+          retention-days: 14
