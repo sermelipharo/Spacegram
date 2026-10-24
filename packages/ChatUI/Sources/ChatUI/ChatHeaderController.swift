@@ -275,6 +275,11 @@ struct ChatHeaderState : Identifiable, Equatable {
         }
     }
 
+    var canDisplayPeerDescription: Bool {
+        guard case .none = main else { return false }
+        return height == 0
+    }
+
     var secondaryHeight:CGFloat {
         var height: CGFloat = 0
         if let _ = voiceChat {

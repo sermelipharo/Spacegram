@@ -8,6 +8,9 @@ __TRANSLATION_TONE__
 struct ChatPresentationInterfaceState {
     struct PeerFixture {
         let restriction: String?
+        var isGroup = false
+        var isSupergroup = false
+        var isChannel = false
         func restrictionText(_ settings: Int?) -> String? { restriction }
     }
     struct TranslateState {
@@ -22,7 +25,17 @@ struct ChatPresentationInterfaceState {
     var historyCount: Int? = 10
     var peer: PeerFixture?
     var contentSettings: Int?
+    var cachedData: Any?
+    var isNotAccessible = false
+    var isMonoforum = false
 }
+struct CachedChannelData { var about: String? }
+struct CachedGroupData { var about: String? }
+struct PeerView {
+    var cachedData: Any?
+    var peer: ChatPresentationInterfaceState.PeerFixture?
+}
+func peerViewMainPeer(_ view: PeerView) -> ChatPresentationInterfaceState.PeerFixture? { view.peer }
 final class Context {}
 final class ChatInteraction {
     var mode: Mode = .history
@@ -53,6 +66,12 @@ final class ChatHeaderBubblesView {
     var callHidden = true
     var searchHidden = false
     var menuMode: MenuMode = .menu
+    var displaysPeerDescription = false
+    let descriptionView = ChatHeaderDescriptionView(frame: .zero)
+    var peerView: PeerView?
+    var currentChatTheme: PresentationTheme?
+    var theme: PresentationTheme { PresentationTheme.current }
+    var titleHandler: (() -> Void)?
     let chatInteraction = ChatInteraction()
     var titleView = TextFixture(textLayout: TextLayout(attributedString: NSAttributedString(string: "FortunaTV - DEEP", attributes: [.font: NSFont.systemFont(ofSize: 14, weight: .medium)])))
     var statusView = TextFixture(textLayout: TextLayout(attributedString: NSAttributedString(string: "391 subscribers", attributes: [.font: NSFont.systemFont(ofSize: 12)])))
@@ -60,7 +79,12 @@ final class ChatHeaderBubblesView {
     var leftStatusControl: NSView?
     var titleImageView: ImageFixture?
     var avatarControl = NSView(frame: CGRect(x: 0, y: 0, width: 32, height: 32))
+    init() {
+        __DESCRIPTION_HANDLER__
+    }
     __GEOMETRY__
+    __DESCRIPTION_UPDATE__
+    __DESCRIPTION_FRAME__
 }
 struct HeaderState {
     enum Value {
@@ -103,8 +127,8 @@ final class ControllerFixture {
         return headerFrame
     }
 }
-struct Appearance { let languageCode = "ru" }
-let appAppearance = Appearance()
+struct Appearance { var languageCode = "ru" }
+var appAppearance = Appearance()
 func _NSLocalizedString(_ value: String) -> String { value.replacingOccurrences(of: "Translate.Language.", with: "") }
 struct Strings {
     let voiceOverCommonTranslate = "Translate"

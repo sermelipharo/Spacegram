@@ -1035,6 +1035,7 @@ public class ChatControllerView : View, ChatInputDelegate {
         let inlineFrame = inlineHeaderFrame(for: frame.width)
         let headerHeight = inlineFrame == nil ? header.state.height : 0
         bubblesView.displaysInlineHeader = inlineFrame != nil
+        bubblesView.displaysPeerDescription = header.state.canDisplayPeerDescription
         bubblesView.extendedContentHeight = headerHeight
         updateHeaderInsets(width: frame.width, animated: transition.isAnimated)
         let bubblesFrame = NSMakeRect(headerInset.x, navigationOverflow, frame.width - headerInset.x, bubbleBarHeight)
