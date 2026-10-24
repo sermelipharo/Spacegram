@@ -34,7 +34,9 @@ jobs:
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
       - name: Prepare build environment
-        run: sh scripts/setup_build_env.sh
+        run: |
+          sed -i '' '/openssl@1.1/d' scripts/setup_build_env.sh
+          sh scripts/setup_build_env.sh
 
       - name: Override API credentials
         env:
