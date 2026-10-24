@@ -308,9 +308,6 @@ open class TransformImageView: NSView, TransformImageRenderHost {
                 let captureProtectedContentLayer = CaptureProtectedContentLayer()
                 captureProtectedContentLayer.frame = self.bounds
                 captureProtectedContentLayer.videoGravity = .resize
-                if #available(macOS 10.15, *) {
-                    captureProtectedContentLayer.preventsCapture = true
-                }
                 self.layer?.addSublayer(captureProtectedContentLayer)
                 self.captureProtectedContentLayer = captureProtectedContentLayer
                 self.layer?.contents = nil

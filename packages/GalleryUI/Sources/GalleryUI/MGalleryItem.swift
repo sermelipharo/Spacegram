@@ -478,9 +478,6 @@ private final class MGalleryItemView : NSView {
                     self.layer?.contents = nil
 
                     captureProtectedContentLayer.frame = self.bounds
-                    if #available(macOS 10.15, *) {
-                        captureProtectedContentLayer.preventsCapture = true
-                    }
                     
                     self.layer?.addSublayer(captureProtectedContentLayer)
                     
