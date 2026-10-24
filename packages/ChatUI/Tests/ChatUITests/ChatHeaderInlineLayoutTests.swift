@@ -27,9 +27,9 @@ final class ChatHeaderInlineLayoutTests: XCTestCase {
         XCTAssertEqual(frame.width, ChatHeaderInlineLayout.minimumAccessoryWidth)
     }
 
-    func testShortTitlesKeepRoomForTheAvatarAndStatus() throws {
-        let frame = try XCTUnwrap(ChatHeaderInlineLayout.accessoryFrame(in: CGRect(x: 0, y: 12, width: 490, height: 40), preferredTitleWidth: 20, spacing: 10))
-        XCTAssertEqual(frame.minX, 170)
+    func testShortTitlesKeepRoomForTheAvatarStatusAndTypingActivity() throws {
+        let frame = try XCTUnwrap(ChatHeaderInlineLayout.accessoryFrame(in: CGRect(x: 0, y: 12, width: 550, height: 40), preferredTitleWidth: 20, spacing: 10))
+        XCTAssertEqual(frame.minX, 230)
         XCTAssertEqual(frame.width, ChatHeaderInlineLayout.minimumAccessoryWidth)
     }
 
@@ -39,7 +39,7 @@ final class ChatHeaderInlineLayoutTests: XCTestCase {
             guard let frame = ChatHeaderInlineLayout.accessoryFrame(in: available, preferredTitleWidth: 220, spacing: 10) else {
                 continue
             }
-            XCTAssertGreaterThanOrEqual(frame.minX, available.minX + 160 + 10)
+            XCTAssertGreaterThanOrEqual(frame.minX, available.minX + 220 + 10)
             XCTAssertGreaterThanOrEqual(frame.width, ChatHeaderInlineLayout.minimumAccessoryWidth)
             XCTAssertEqual(frame.maxX, available.maxX)
             XCTAssertEqual(frame.minY, available.minY)

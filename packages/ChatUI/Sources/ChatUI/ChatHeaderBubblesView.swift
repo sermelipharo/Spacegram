@@ -347,28 +347,37 @@ final class ChatHeaderBubblesView: View, InteractionContentViewProtocol {
 
     var inputActivities: (PeerId, [(Peer, PeerInputActivity)])? {
         didSet {
-            if let inputActivities = inputActivities, self.chatInteraction.mode != .scheduled && self.chatInteraction.mode != .pinned {
-                let textColor = theme.colors.accent
-                activities.update(with: inputActivities, for: max(centerBubble.frame.width - 60, 160), theme: theme.activity(key: 4, foregroundColor: textColor, backgroundColor: .clear), layout: { [weak self] show in
-                    guard let self else { return }
-                    self.showActivities = show
-                    if let view = self.activities.view {
-                        view.layer?.opacity = 1
-                        view.layer?.removeAllAnimations()
-                        self.updateActivitiesAttachment(view, show: show)
-                    }
-                    self.statusView.isHidden = show || self.statusView.textLayout == nil
-                    self.needsLayout = true
-                })
-            } else {
-                activities.clean()
-                showActivities = false
+            updateInputActivities()
+        }
+    }
+
+    private var inputActivitiesWidth: CGFloat?
+
+    private func updateInputActivities() {
+        if let inputActivities, self.chatInteraction.mode != .scheduled && self.chatInteraction.mode != .pinned {
+            let width = max(centerBubble.frame.width - 60, 160)
+            inputActivitiesWidth = width
+            let textColor = theme.colors.accent
+            activities.update(with: inputActivities, for: width, theme: theme.activity(key: 4, foregroundColor: textColor, backgroundColor: .clear), layout: { [weak self] show in
+                guard let self else { return }
+                self.showActivities = show
                 if let view = self.activities.view {
-                    updateActivitiesAttachment(view, show: false)
+                    view.layer?.opacity = 1
+                    view.layer?.removeAllAnimations()
+                    self.updateActivitiesAttachment(view, show: show)
                 }
-                self.statusView.isHidden = self.statusView.textLayout == nil
+                self.statusView.isHidden = show || self.statusView.textLayout == nil
                 self.needsLayout = true
+            })
+        } else {
+            inputActivitiesWidth = nil
+            activities.clean()
+            showActivities = false
+            if let view = self.activities.view {
+                updateActivitiesAttachment(view, show: false)
             }
+            self.statusView.isHidden = self.statusView.textLayout == nil
+            self.needsLayout = true
         }
     }
 
@@ -1059,6 +1068,10 @@ final class ChatHeaderBubblesView: View, InteractionContentViewProtocol {
         }
         transition.updateFrame(view: centerBubble, frame: centerRect)
         syncGhost(centerGhost, frame: centerRect, hidden: centerWidth <= 0, transition: transition)
+        if inputActivities != nil, chatInteraction.mode != .scheduled, chatInteraction.mode != .pinned,
+           inputActivitiesWidth != max(centerRect.width - 60, 160) {
+            updateInputActivities()
+        }
 
         let centerContentBounds = NSRect(origin: .zero, size: centerRect.size)
 
