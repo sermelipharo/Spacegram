@@ -822,10 +822,7 @@ class ChatSearchHeader : View, Notifable, ChatHeaderProtocol {
             let stateValue = self.query
             
             updateCount(current: max(value.selectedIndex + 1, 0), total: max(value.totalCount, value.messages.0.count), animated: animated)
-            prev.isEnabled = !value.messages.0.isEmpty && value.selectedIndex < value.messages.0.count - 1
-            next.isEnabled = !value.messages.0.isEmpty && value.selectedIndex > 0
-            next.set(image: next.isEnabled ? theme.icons.chat_search_next : theme.icons.chat_search_next_disabled, for: .Normal)
-            prev.set(image: prev.isEnabled ? theme.icons.chat_search_prev : theme.icons.chat_search_prev_disabled, for: .Normal)
+            updateSearchState()
 
             
             
@@ -1218,13 +1215,6 @@ class ChatSearchHeader : View, Notifable, ChatHeaderProtocol {
         let theme = (theme as! TelegramPresentationTheme)
         backgroundColor = .clear
 
-        next.set(image: theme.icons.chat_search_next, for: .Normal)
-        _ = next.sizeToFit()
-
-        prev.set(image: theme.icons.chat_search_prev, for: .Normal)
-        _ = prev.sizeToFit()
-
-
         calendar.set(image: theme.icons.chat_search_calendar, for: .Normal)
         _ = calendar.sizeToFit()
 
@@ -1247,7 +1237,13 @@ class ChatSearchHeader : View, Notifable, ChatHeaderProtocol {
     }
     
     func updateSearchState() {
-       
+        let state = inputInteraction.state
+        prev.isEnabled = !state.messages.0.isEmpty && state.selectedIndex < state.messages.0.count - 1
+        next.isEnabled = !state.messages.0.isEmpty && state.selectedIndex > 0
+        next.set(image: next.isEnabled ? theme.icons.chat_search_next : theme.icons.chat_search_next_disabled, for: .Normal)
+        prev.set(image: prev.isEnabled ? theme.icons.chat_search_prev : theme.icons.chat_search_prev_disabled, for: .Normal)
+        _ = next.sizeToFit()
+        _ = prev.sizeToFit()
     }
     
     private func closeCalendarPopover() {

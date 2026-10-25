@@ -113,6 +113,7 @@ func verifyResults(_ context: String) {
     popup.hitTest(NSMakePoint(popup.frame.minX + 20, popup.frame.minY + 20)) != nil,
     "Results cannot receive clicks: \(context)")
 }
+runEmptySearchChecks(search)
 layout(width: 1000)
 window.makeKeyAndOrderFront(nil)
 drain()
@@ -204,6 +205,7 @@ check(
   "Composer suggestions no longer follow their own input width")
 composerAnchor.removeFromSuperview()
 runHeaderLayoutChecks()
+runHeaderRemovalChecks()
 let savedState = ChatHeaderState(main: .search(operations, nil, nil, [], nil, interaction.chatLocation))
 let savedSearch = ChatSearchHeader(interaction, state: savedState, frame: NSMakeRect(0, 0, 742, 75))
 for width: CGFloat in [742, 360, 1000] {
@@ -234,7 +236,7 @@ if CommandLine.arguments.contains("--expect-regression") {
     failures.contains(where: {
       $0.contains("Results width") || $0.contains("Results moved") || $0.contains("clipped outside")
     }), "Baseline must reproduce detached/clipped result panel")
-  if failures.contains(where: { !$0.contains("viewport") && !$0.hasPrefix("Results") && !$0.hasPrefix("Saved tags") && !$0.hasPrefix("Header") }) { exit(1) }
+  if failures.contains(where: { !$0.contains("viewport") && !$0.hasPrefix("Results") && !$0.hasPrefix("Saved tags") && !$0.hasPrefix("Header") && !$0.hasPrefix("Empty search") }) { exit(1) }
   print(
     "Baseline reproduced cramped input and stale result-panel geometry (\(failures.count) failed checks)."
   )

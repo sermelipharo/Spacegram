@@ -84,6 +84,7 @@ extension ChatSearchHeader {
         '__SLOT_FIELDS__': lifecycle[lifecycle.index('    private var primaryInited'):lifecycle.index('    var state:ChatHeaderState')].replace('private ', ''),
         '__SLOT_LAYOUT__': lifecycle[slot_start:lifecycle.index('        layoutSeparators(', slot_start)],
         '__ROOT_LAYOUT__': source('ChatController')[root_layout_start:source('ChatController').index('\n        }', root_layout_start)],
+        '__HEADER_REMOVAL__': block(lifecycle[lifecycle.rindex('                if let currentView = currentView {'):], 'if let currentView = currentView {'),
     }
     layout_tests = (fixtures / 'HeaderLayout.swift').read_text()
     for marker, value in lifecycle_parts.items():
@@ -110,7 +111,7 @@ struct ControllerGeometry {
         filename = next(image['filename'] for image in variants if image.get('filename') and image.get('scale') == '1x')
         images[name] = str(image_set / filename)
     (sources / 'Assets.swift').write_text('let imagePaths: [String: String] = [' + ', '.join(json.dumps(name) + ': ' + json.dumps(path) for name, path in images.items()) + ']')
-    for name in ['Models.swift', 'main.swift']:
+    for name in ['Models.swift', 'EmptySearchState.swift', 'main.swift']:
         (sources / name).write_text((fixtures / name).read_text())
     command = ['swift', 'run', '--package-path', str(directory), '--scratch-path', str(args.scratch_path.resolve()), '--disable-sandbox', '--jobs', '4', 'SearchIntegration']
     if args.expect_regression:

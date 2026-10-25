@@ -1041,7 +1041,6 @@ public class ChatControllerView : View, ChatInputDelegate {
         let inlineFrame = inlineHeaderFrame(for: frame.width)
         let headerHeight = inlineFrame == nil ? header.state.height : 0
         bubblesView.displaysInlineHeader = inlineFrame != nil
-        bubblesView.displaysPeerDescription = header.state.canDisplayPeerDescription
         bubblesView.extendedContentHeight = headerHeight
         updateHeaderInsets(width: frame.width, animated: transition.isAnimated)
         let bubblesFrame = NSMakeRect(headerInset.x, navigationOverflow, frame.width - headerInset.x, bubbleBarHeight)
@@ -1362,7 +1361,7 @@ public class ChatControllerView : View, ChatInputDelegate {
 
         state.measure(frame.width - (interfaceState.monoforumState == .vertical ? 92 : 0) - 24)
 
-        header.updateState(state, animated: animated, for: self, inset: interfaceState.monoforumState == .vertical ? 92 : 0, relativeView: header.monoforumView)
+        header.updateState(state, animated: animated, for: self, inset: interfaceState.monoforumState == .vertical ? 92 : 0, relativeView: header.monoforumView, mergeGlassOnRemoval: bubblesView.displaysInlineHeader)
 
         updateHeaderInsets(width: frame.width, animated: animated)
 

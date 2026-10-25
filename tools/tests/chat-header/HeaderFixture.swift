@@ -66,8 +66,6 @@ final class ChatHeaderBubblesView {
     var callHidden = true
     var searchHidden = false
     var menuMode: MenuMode = .menu
-    var displaysPeerDescription = false
-    let descriptionView = ChatHeaderDescriptionView(frame: .zero)
     var peerView: PeerView?
     var currentChatTheme: PresentationTheme?
     var theme: PresentationTheme { PresentationTheme.current }
@@ -79,12 +77,7 @@ final class ChatHeaderBubblesView {
     var leftStatusControl: NSView?
     var titleImageView: ImageFixture?
     var avatarControl = NSView(frame: CGRect(x: 0, y: 0, width: 32, height: 32))
-    init() {
-        __DESCRIPTION_HANDLER__
-    }
     __GEOMETRY__
-    __DESCRIPTION_UPDATE__
-    __DESCRIPTION_FRAME__
 }
 struct HeaderState {
     enum Value {

@@ -110,4 +110,3 @@ print("PASS: \(checks) exact-source header placement, history inset, translation
 
 runNativeSearchChecks()
 runActivityChecks()
-runNativeDescriptionChecks()

@@ -262,7 +262,6 @@ final class ChatHeaderBubblesView: View, InteractionContentViewProtocol {
     private let glassWrapper: GlassContainerView
     private let backGhost: LiquidGlassView
     private let centerGhost: LiquidGlassView
-    private let descriptionGhost: LiquidGlassView
     private let rightGhost: LiquidGlassView
 
     /// Same shared glass surface, exposed as the wrapper itself so callers
@@ -290,7 +289,6 @@ final class ChatHeaderBubblesView: View, InteractionContentViewProtocol {
     private let avatarControl: AvatarStoryControl = AvatarStoryControl(font: .avatar(12), size: NSMakeSize(32, 32))
     private let titleView: TextView = TextView()
     private let statusView: TextView = TextView()
-    private let descriptionView = ChatHeaderDescriptionView(frame: .zero)
     private let activities: ChatActivitiesModel = ChatActivitiesModel()
 
     private var titleImageView: ImageView?
@@ -304,7 +302,6 @@ final class ChatHeaderBubblesView: View, InteractionContentViewProtocol {
 
     private var searchHidden: Bool = false
     var displaysInlineHeader: Bool = false
-    var displaysPeerDescription: Bool = false
     private var previousInlineHeaderFrame: NSRect?
     private var callHidden: Bool = true
     private var showActivities: Bool = false
@@ -456,7 +453,6 @@ final class ChatHeaderBubblesView: View, InteractionContentViewProtocol {
         
         self.backGhost = LiquidGlassView(frame: .zero, cornerRadius: cornerRadius, hasShadow: true, hasBorder: true, tintAlpha: 0.4)
         self.centerGhost = LiquidGlassView(frame: .zero, cornerRadius: cornerRadius, hasShadow: true, hasBorder: true, tintAlpha: 0.4)
-        self.descriptionGhost = LiquidGlassView(frame: .zero, cornerRadius: cornerRadius, hasShadow: true, hasBorder: true, tintAlpha: 0.4)
         self.rightGhost = LiquidGlassView(frame: .zero, cornerRadius: cornerRadius, hasShadow: true, hasBorder: true, tintAlpha: 0.4)
 
         super.init(frame: frameRect)
@@ -470,13 +466,11 @@ final class ChatHeaderBubblesView: View, InteractionContentViewProtocol {
 
         glassWrapper.addGhost(rightGhost)
         glassWrapper.addGhost(centerGhost)
-        glassWrapper.addGhost(descriptionGhost)
         glassWrapper.addGhost(backGhost)
 
         rightCluster.additionalGlassEffectView = rightGhost
 
         addSubview(centerBubble)
-        addSubview(descriptionView)
         addSubview(backButton)
         addSubview(leftEdgeHandle)
         addSubview(rightCluster)
@@ -500,11 +494,6 @@ final class ChatHeaderBubblesView: View, InteractionContentViewProtocol {
         centerBubble.titleTapHandler = { [weak self] in
             self?.titleHandler?()
         }
-        descriptionView.set(handler: { [weak self] _ in
-            self?.titleHandler?()
-        }, for: .Click)
-        descriptionView.interactiveGlassView = descriptionView
-        descriptionView.additionalGlassEffectView = descriptionGhost
         centerBubble.accessibilityAvatarActionProvider = { [weak self] in
             return self?.avatarAccessibilityActionName?()
         }
@@ -593,18 +582,15 @@ final class ChatHeaderBubblesView: View, InteractionContentViewProtocol {
 
         backGhost.updateLocalizationAndTheme(theme: theme)
         centerGhost.updateLocalizationAndTheme(theme: theme)
-        descriptionGhost.updateLocalizationAndTheme(theme: theme)
         rightGhost.updateLocalizationAndTheme(theme: theme)
 
         let chatGlassTint = theme.colors.background.withAlphaComponent(0.4)
         backGhost.customTint = chatGlassTint
         centerGhost.customTint = chatGlassTint
-        descriptionGhost.customTint = chatGlassTint
         rightGhost.customTint = chatGlassTint
         applyMenuMode()
 
         updateStatusText(presentation: chatInteraction.presentation)
-        updatePeerDescription(chatInteraction.presentation)
         needsLayout = true
     }
 
@@ -626,7 +612,6 @@ final class ChatHeaderBubblesView: View, InteractionContentViewProtocol {
         updateLiveStream(story, animated: animated)
         updateStatusText(presentation: chatInteraction.presentation)
         updatePeerExtras(presentation: chatInteraction.presentation, animated: animated)
-        updatePeerDescription(chatInteraction.presentation)
         applyCallButtonImage()
         needsLayout = true
     }
@@ -634,26 +619,10 @@ final class ChatHeaderBubblesView: View, InteractionContentViewProtocol {
     func updatePresentation(_ presentation: ChatPresentationInterfaceState, force: Bool = false) {
         updateStatusText(presentation: presentation, force: force)
         updatePeerExtras(presentation: presentation, animated: false)
-        updatePeerDescription(presentation)
         applyCallButtonImage()
         needsLayout = true
     }
 
-    private func updatePeerDescription(_ presentation: ChatPresentationInterfaceState) {
-        var text: String?
-        let peer = peerView.flatMap { peerViewMainPeer($0) } ?? presentation.peer
-        let cachedData = peerView?.cachedData ?? presentation.cachedData
-        if chatInteraction.mode == .history, !presentation.isNotAccessible, !presentation.isMonoforum,
-           let peer, peer.isGroup || peer.isSupergroup || peer.isChannel,
-           peer.restrictionText(presentation.contentSettings) == nil {
-            if let data = cachedData as? CachedChannelData {
-                text = data.about
-            } else if let data = cachedData as? CachedGroupData {
-                text = data.about
-            }
-        }
-        descriptionView.update(text: text, theme: currentChatTheme ?? theme)
-    }
 
     func updateSearchButton(hidden: Bool, animated: Bool) {
         if searchHidden != hidden {
@@ -1036,10 +1005,6 @@ final class ChatHeaderBubblesView: View, InteractionContentViewProtocol {
         return ChatHeaderInlineLayout.accessoryFrame(in: available, preferredTitleWidth: preferredWidth, spacing: Self.interBubbleSpacing)
     }
 
-    private func peerDescriptionFrame(for width: CGFloat) -> NSRect? {
-        guard displaysPeerDescription, descriptionView.hasContent, menuMode == .menu else { return nil }
-        return inlineHeaderFrame(for: width)
-    }
 
     override func layout() {
         super.layout()
@@ -1060,16 +1025,6 @@ final class ChatHeaderBubblesView: View, InteractionContentViewProtocol {
         let wrapperFrame = NSRect(x: 0, y: 0, width: size.width, height: totalHeight)
         transition.updateFrame(view: glassWrapper, frame: wrapperFrame)
         glassWrapper.updateLayout(size: wrapperFrame.size, transition: transition)
-
-        let descriptionFrame = peerDescriptionFrame(for: size.width)
-        descriptionView.isHidden = descriptionFrame == nil
-        if let descriptionFrame {
-            transition.updateFrame(view: descriptionView, frame: descriptionFrame)
-            descriptionView.updateLayout(size: descriptionFrame.size, transition: transition)
-            syncGhost(descriptionGhost, frame: descriptionFrame, hidden: false, transition: transition)
-        } else {
-            descriptionGhost.isHidden = true
-        }
 
         var leftX: CGFloat = leftSideInset
         if hasBackButton {
@@ -1110,7 +1065,7 @@ final class ChatHeaderBubblesView: View, InteractionContentViewProtocol {
         let textRightPadding: CGFloat = 14
 
         var centerRect = NSRect(x: centerAvailableMinX, y: bubbleY, width: centerWidth, height: bubbleHeight)
-        if displaysInlineHeader || descriptionFrame != nil, let inlineFrame {
+        if displaysInlineHeader, let inlineFrame {
             centerRect.size.width = inlineFrame.minX - spacing - centerRect.minX
         }
         transition.updateFrame(view: centerBubble, frame: centerRect)

@@ -275,11 +275,6 @@ struct ChatHeaderState : Identifiable, Equatable {
         }
     }
 
-    var canDisplayPeerDescription: Bool {
-        guard case .none = main else { return false }
-        return height == 0
-    }
-
     var secondaryHeight:CGFloat {
         var height: CGFloat = 0
         if let _ = voiceChat {
@@ -467,7 +462,7 @@ class ChatHeaderController {
         }
     }
     
-    func updateState(_ state:ChatHeaderState, animated:Bool, for view:View, inset: CGFloat, relativeView: NSView?) -> Void {
+    func updateState(_ state:ChatHeaderState, animated:Bool, for view:View, inset: CGFloat, relativeView: NSView?, mergeGlassOnRemoval: Bool = false) -> Void {
         if _headerState != state {
             _headerState = state
 
@@ -665,13 +660,22 @@ class ChatHeaderController {
                     performSubviewRemoval(currentView, animated: animated)
                     if let removingGlass, removingGlass.superview !== currentView {
                         let wrapper = sharedGlassWrapper
-                        performSubviewRemoval(removingGlass, animated: animated, completed: { [weak wrapper, weak removingGlass] _ in
-                            if let removingGlass {
+                        if animated && mergeGlassOnRemoval {
+                            Queue.mainQueue().after(0.2) { [weak wrapper, weak removingGlass] in
+                                if let removingGlass {
+                                    wrapper?.removeGhost(removingGlass)
+                                    removingGlass.removeFromSuperview()
+                                }
+                            }
+                        } else {
+                            performSubviewRemoval(removingGlass, animated: animated, completed: { [weak wrapper, weak removingGlass] _ in
+                                if let removingGlass {
+                                    wrapper?.removeGhost(removingGlass)
+                                }
+                            })
+                            if !animated {
                                 wrapper?.removeGhost(removingGlass)
                             }
-                        })
-                        if !animated {
-                            wrapper?.removeGhost(removingGlass)
                         }
                     }
                 }
