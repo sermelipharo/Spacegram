@@ -82,7 +82,29 @@ final class Window {
     var operation: Disposable?
 }
 final class Context { let account = Account(); let window = Window() }
-final class ChatInteraction { let interactionContext = Context() }
+enum ChatState { case normal, selecting }
+struct SelectionState { let selectedIds: Set<MessageId> }
+struct Presentation {
+    var state = ChatState.normal
+    var selectionState: SelectionState?
+}
+final class ChatInteraction { let interactionContext = Context(); var presentation = Presentation() }
+final class ChatRowItem {
+    let chatInteraction: ChatInteraction
+    let messages: [Message]
+    init(_ messages: [Message], _ interaction: ChatInteraction) {
+        self.messages = messages
+        self.chatInteraction = interaction
+    }
+}
+class ParentChatRowView {
+    var menuDispatches = 0
+    func rightMouseDown(with event: NSEvent) { menuDispatches += 1 }
+}
+final class ChatRowView: ParentChatRowView {
+    var item: Any?
+__RIGHT_MOUSE_DOWN__
+}
 func selectFolder(for window: Window, completion: @escaping (String) -> Void) {
     window.picks += 1
     if let directory = window.directory { completion(directory) }

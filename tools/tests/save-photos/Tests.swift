@@ -85,6 +85,23 @@ let items = ChatPhotoSaveAction.items(from: [later, photo, photo], cachedData: n
 expect(items.map { $0.message.id.id } == [10, 11], "photos are ordered and deduplicated")
 expect(items.allSatisfy { $0.representation.resource.id == 2 }, "export uses largest representation instead of cached thumbnail")
 expect(ChatPhotoSaveAction.items(from: [Message(id: MessageId(id: 12), media: [])], cachedData: nil).isEmpty, "text-only selection entries are ignored")
+let menuEvent = NSEvent.mouseEvent(with: .rightMouseDown, location: .zero, modifierFlags: [], timestamp: 0, windowNumber: 0, context: nil, eventNumber: 0, clickCount: 1, pressure: 1)!
+func menuDispatches(messages: [Message], state: ChatState, selected: Set<MessageId>) -> Int {
+    let interaction = ChatInteraction()
+    interaction.presentation.state = state
+    interaction.presentation.selectionState = SelectionState(selectedIds: selected)
+    let view = ChatRowView()
+    view.item = ChatRowItem(messages, interaction)
+    view.rightMouseDown(with: menuEvent)
+    return view.menuDispatches
+}
+expect(menuDispatches(messages: [photo], state: .normal, selected: []) == 1, "ordinary photo right click still opens the menu")
+expect(menuDispatches(messages: [photo, later], state: .selecting, selected: [photo.id, later.id]) == 1, "selected album right click reaches the batch photo menu")
+expect(menuDispatches(messages: [photo], state: .selecting, selected: [photo.id, later.id]) == 1, "selected standalone photo right click reaches the batch menu")
+expect(menuDispatches(messages: [photo], state: .selecting, selected: [photo.id]) == 0, "single selection preserves existing context menu suppression")
+expect(menuDispatches(messages: [photo], state: .selecting, selected: [later.id, MessageId(id: 50)]) == 0, "right clicking an unselected photo cannot export an unrelated selection")
+let textOnly = Message(id: MessageId(id: 12), media: [])
+expect(menuDispatches(messages: [textOnly], state: .selecting, selected: [textOnly.id, later.id]) == 0, "selected text keeps existing context menu behavior")
 struct PhotoMenuData { let groupped: [Message]? }
 func menuPhotoMessages(selectedMessages: [Message], grouped: [Message]?, useGroupIfNeeded: Bool) -> [Message] {
     let data = PhotoMenuData(groupped: grouped)
