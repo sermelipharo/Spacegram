@@ -268,7 +268,7 @@ struct ChatHeaderState : Identifiable, Equatable {
             return false
         }
         switch main {
-        case .pinned, .search(_, _, _, nil, _, _):
+        case .pinned, .restartTopic, .shareInfo, .pendingRequests, .requestChat, .setBotPhoto, .search(_, _, _, nil, _, _):
             return true
         default:
             return false
@@ -424,8 +424,9 @@ class ChatHeaderController {
         let layoutSlot: (View?, Bool) -> Bool = { view, inited in
             guard let view = view else { return inited }
             let layoutTransition: ContainedViewLayoutTransition = inited ? transition : .immediate
-            layoutTransition.updateFrame(view: view, frame: NSMakeRect(0, view.frame.minY, size.width, view.frame.height))
-            (view as? ChatHeaderProtocol)?.updateLayout(size: NSMakeSize(size.width, view.frame.height), transition: layoutTransition)
+            let height = view === self.primaryView && self._headerState.canDisplayInline ? size.height : view.frame.height
+            layoutTransition.updateFrame(view: view, frame: NSMakeRect(0, view.frame.minY, size.width, height))
+            (view as? ChatHeaderProtocol)?.updateLayout(size: NSMakeSize(size.width, height), transition: layoutTransition)
             return true
         }
         primaryInited = layoutSlot(self.primaryView, primaryInited)
@@ -2516,9 +2517,10 @@ private final class ChatRestartTopic : Control, ChatHeaderProtocol {
 
     func update(with state: ChatHeaderState, animated: Bool) {
         _state = state
+        setAccessibilityLabel(strings().chatHeaderRestartTopic)
         let attr = NSMutableAttributedString()
         _ = attr.append(string: strings().chatHeaderRestartTopic, color: theme.colors.text, font: .normal(.text))
-        let layout = TextViewLayout(attr)
+        let layout = TextViewLayout(attr, maximumNumberOfLines: 1)
         textView.update(layout)
         updateLocalizationAndTheme(theme: theme)
         needsLayout = true
@@ -2533,12 +2535,12 @@ private final class ChatRestartTopic : Control, ChatHeaderProtocol {
     
     override func layout() {
         super.layout()
-        textView.resize(frame.width - 40)
-        textView.center()
+        updateLayout(size: frame.size, transition: .immediate)
     }
     
     func updateLayout(size: NSSize, transition: ContainedViewLayoutTransition) {
-        
+        textView.resize(max(0, size.width - 40))
+        transition.updateFrame(view: textView, frame: textView.centerFrame())
     }
     
     

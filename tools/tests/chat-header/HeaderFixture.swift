@@ -42,6 +42,7 @@ final class ChatInteraction {
     var presentation = ChatPresentationInterfaceState()
     let interactionContext = Context()
     var events: [String] = []
+    lazy var restartTopic: () -> Void = { [weak self] in self?.events.append("restart") }
     lazy var toggleTranslate: () -> Void = { [weak self] in self?.events.append("toggle") }
     lazy var hideTranslation: () -> Void = { [weak self] in self?.events.append("hide") }
     lazy var translateTo: (String) -> Void = { [weak self] in self?.events.append("to:" + $0) }
@@ -123,7 +124,9 @@ final class ControllerFixture {
 struct Appearance { var languageCode = "ru" }
 var appAppearance = Appearance()
 func _NSLocalizedString(_ value: String) -> String { value.replacingOccurrences(of: "Translate.Language.", with: "") }
+var utilityHeaderTitle = "Reopen Topic"
 struct Strings {
+    var chatHeaderRestartTopic: String { utilityHeaderTitle }
     let voiceOverCommonTranslate = "Translate"
     let chatTranslateShowOriginal = "Show Original"
     let chatTranslateMenuHide = "Hide translation"

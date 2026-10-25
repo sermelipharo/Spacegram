@@ -36,6 +36,7 @@ search = search[search.index("class ChatSearchHeader :"):]
 tone = (root / "submodules/telegram-ios/submodules/TelegramCore/Sources/TelegramEngine/Messages/Translate.swift").read_text()
 frame_start = controller.index("            let headerFrame = inlineFrame?.offsetBy")
 parts = {
+    "__RESTART_TOPIC__": block(header, "private final class ChatRestartTopic :"),
     "__WIDTH__": block(bubbles, "static func desiredWidth(buttonSize:"),
     "__GEOMETRY__": block(bubbles, "func inlineHeaderFrame(for width:"),
     "__STATE_METHODS__": "\n".join(block(header, "var height:CGFloat" if name == "height" else "var " + name + ":") for name in ["monoforumHeight", "height", "primaryHeight", "secondaryHeight", "thirdHeight", "fourthHeight", "toleranceHeight", "canDisplayInline"]),
@@ -76,7 +77,7 @@ let package = Package(name: "ChatHeaderChecks", platforms: [.macOS(.v12)], depen
     shutil.copy2(source_root / "ChatHeaderInlineLayout.swift", layout_dir)
     shutil.copy2(root / "packages/ChatUI/Tests/ChatUITests/ChatHeaderInlineLayoutTests.swift", tests_dir)
     shutil.copy2(source_root / "ChatHeaderInlineLayout.swift", integration_dir)
-    for name in ["HeaderFixture.swift", "NativeSearchFixture.swift", "ActivityFixture.swift", "main.swift"]:
+    for name in ["HeaderFixture.swift", "NativeSearchFixture.swift", "ActivityFixture.swift", "UtilityHeaderFixture.swift", "main.swift"]:
         text = (fixtures / name).read_text()
         for marker, body in parts.items():
             text = text.replace(marker, body)

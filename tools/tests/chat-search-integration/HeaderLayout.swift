@@ -15,6 +15,8 @@ final class HeaderSlotFixture: View, ChatHeaderProtocol {
 final class HeaderLayoutFixture {
   let currentView = View(frame: NSMakeRect(12, 62, 976, 40))
   var hasLayout = false
+  struct SlotState { var canDisplayInline = true }
+  var _headerState = SlotState()
   __SLOT_FIELDS__
 
   func updateLayout(size: NSSize, transition: ContainedViewLayoutTransition) {
@@ -54,6 +56,20 @@ func runHeaderLayoutChecks() {
   check(
     replacement.layer?.animationKeys()?.isEmpty != false,
     "Header replacement slot has an unexpected frame animation")
+#if INLINE_UTILITY_HEADERS
+  let utility = HeaderSlotFixture(frame: NSMakeRect(0, 0, 900, 36))
+  header.primaryView = utility
+  header.currentView.addSubview(utility)
+  header.updateLayout(size: NSMakeSize(600, 40), transition: .immediate)
+  check(utility.frame.height == 40, "utility hit area does not fill the inline glass")
+  header.updateLayout(size: NSMakeSize(320, 36), transition: .immediate)
+  check(utility.frame.height == 36, "utility kept the inline height in its fallback row")
+  header._headerState.canDisplayInline = false
+  let secondary = HeaderSlotFixture(frame: NSMakeRect(0, 36, 600, 40))
+  header.seconderyView = secondary
+  header.updateLayout(size: NSMakeSize(600, 76), transition: .immediate)
+  check(utility.frame.height == 36 && secondary.frame.height == 40, "stacked utility slots were stretched to the full header height")
+#endif
 }
 
 final class HeaderRemovalFixture {

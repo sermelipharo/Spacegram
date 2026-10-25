@@ -39,6 +39,28 @@ for width: CGFloat in [1100, 800, 650, 520, 350, 900] {
     controller.header.state.main = .pinned(1)
     check(controller.headerFrame() == pinned, "closing search did not restore pinned slot")
 }
+for action: HeaderState.Value in [.restartTopic, .shareInfo, .pendingRequests, .requestChat, .setBotPhoto] {
+    controller.header.state = HeaderState(main: action)
+    for width: CGFloat in [1100, 350, 800, 350, 1100] {
+        controller.frame.size.width = width
+        controller.updateHeaderInsets(width: width, animated: false)
+        let rect = controller.headerFrame()
+        if controller.bubblesView.inlineHeaderFrame(for: width) != nil {
+            check(rect.minY == 12 && rect.height == 40, "utility action missed the inline header slot")
+            check(controller.headerHeight == 0 && controller.tableView.contentInsets.top == 62, "inline utility action left an empty row")
+        } else {
+            check(rect.minY == 62 && rect.height == 36, "narrow utility action lost its standalone row")
+            check(controller.tableView.contentInsets.top == 98, "narrow utility action overlaps history")
+        }
+    }
+    controller.header.state = HeaderState(main: action, voiceChat: true)
+    check(!controller.header.state.canDisplayInline, "utility action overlaps the active call banner")
+    controller.header.state = HeaderState(main: action, monoforumHorizontal: true)
+    check(!controller.header.state.canDisplayInline, "utility action overlaps forum controls")
+}
+for action: HeaderState.Value in [.report(0, nil), .addContact, .promo, .removePaidMessages] {
+    check(!HeaderState(main: action).canDisplayInline, "multi-action or explanatory banner was compacted")
+}
 controller.frame.size.width = 1100
 controller.header.state = HeaderState(main: .search(0, nil, nil, [], nil, 0))
 check(controller.headerHeight == 75 && controller.headerFrame().minY == 62, "saved-message tags lost their row")
@@ -110,3 +132,5 @@ print("PASS: \(checks) exact-source header placement, history inset, translation
 
 runNativeSearchChecks()
 runActivityChecks()
+
+runUtilityHeaderChecks()
