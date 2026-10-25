@@ -69,6 +69,7 @@ jobs:
             DEVELOPMENT_TEAM= \
             PROVISIONING_PROFILE_SPECIFIER= \
             CODE_SIGN_ENTITLEMENTS="$PWD/ci/Telegram-adhoc.entitlements" \
+            OTHER_SWIFT_FLAGS='$(inherited) -D GITHUB' \
             build
 
       - name: Package
