@@ -38,18 +38,15 @@ jobs:
           sed -i '' '/openssl@1.1/d' scripts/setup_build_env.sh
           sh scripts/setup_build_env.sh
 
-      - name: Override API credentials
+      - name: Configure API credentials
         env:
-          TG_API_ID: ${{ secrets.TG_API_ID }}
-          TG_API_HASH: ${{ secrets.TG_API_HASH }}
+          APP_API_ID: ${{ secrets.APP_API_ID }}
+          APP_API_HASH: ${{ secrets.APP_API_HASH }}
         run: |
-          if [ -n "$TG_API_ID" ] && [ -n "$TG_API_HASH" ]; then
-            f=packages/ApiCredentials/Sources/ApiCredentials/Config.swift
-            sed -i '' -E "s/return [0-9]+$/return $TG_API_ID/; s/return \"[0-9a-f]{32}\"/return \"$TG_API_HASH\"/" "$f"
-            git diff --stat -- "$f"
-          else
-            echo "Using upstream API credentials"
-          fi
+          test -n "$APP_API_ID" && test -n "$APP_API_HASH"
+          f=packages/ApiCredentials/Sources/ApiCredentials/Config.swift
+          sed -i '' -E "s/return 0$/return $APP_API_ID/; s/return \"\"$/return \"$APP_API_HASH\"/" "$f"
+          grep -q "return $APP_API_ID\$" "$f"
 
       - name: Build native libraries
         env:
