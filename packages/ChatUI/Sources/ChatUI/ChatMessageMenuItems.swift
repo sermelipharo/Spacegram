@@ -1303,7 +1303,7 @@ public func chatMenuItems(for message: Message, entry: ChatHistoryEntry?, textLa
         
      
         
-        let photoMessages = selectedMessages.isEmpty ? (useGroupIfNeeded ? data.groupped ?? [] : []) : selectedMessages
+        let photoMessages = selectedMessages.isEmpty ? data.groupped ?? [] : selectedMessages
         let photos = ChatPhotoSaveAction.items(from: photoMessages, cachedData: data.cachedData)
         if photos.count > 1 {
             let title = selectedMessages.isEmpty ? strings().chatContextSaveAllPhotos : strings().chatContextSaveSelectedPhotos

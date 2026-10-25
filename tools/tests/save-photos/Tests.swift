@@ -85,6 +85,16 @@ let items = ChatPhotoSaveAction.items(from: [later, photo, photo], cachedData: n
 expect(items.map { $0.message.id.id } == [10, 11], "photos are ordered and deduplicated")
 expect(items.allSatisfy { $0.representation.resource.id == 2 }, "export uses largest representation instead of cached thumbnail")
 expect(ChatPhotoSaveAction.items(from: [Message(id: MessageId(id: 12), media: [])], cachedData: nil).isEmpty, "text-only selection entries are ignored")
+struct PhotoMenuData { let groupped: [Message]? }
+func menuPhotoMessages(selectedMessages: [Message], grouped: [Message]?, useGroupIfNeeded: Bool) -> [Message] {
+    let data = PhotoMenuData(groupped: grouped)
+    __PHOTO_MESSAGES__
+    return photoMessages
+}
+expect(menuPhotoMessages(selectedMessages: [], grouped: [photo, later], useGroupIfNeeded: false).map { $0.id.id } == [10, 11], "right-clicking an individual album tile retains Save All Photos candidates")
+expect(menuPhotoMessages(selectedMessages: [], grouped: [photo, later], useGroupIfNeeded: true).count == 2, "album caption menu includes all photos")
+expect(menuPhotoMessages(selectedMessages: [later], grouped: [photo, later], useGroupIfNeeded: false).map { $0.id.id } == [11], "explicit selection takes precedence over album")
+expect(menuPhotoMessages(selectedMessages: [], grouped: nil, useGroupIfNeeded: false).isEmpty, "single non-album message has no batch candidates")
 func interaction(_ output: URL?) -> ChatInteraction {
     let interaction = ChatInteraction()
     let window = interaction.interactionContext.window
