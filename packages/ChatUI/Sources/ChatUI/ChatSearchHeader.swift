@@ -731,6 +731,7 @@ class ChatSearchHeader : View, Notifable, ChatHeaderProtocol {
         }
 
         super.init()
+        self.inputContextHelper.fullWidthInset = 12
         
         self.inputContextHelper.controller.onSearchMessageSelected = { [weak self] message in
             self?.inputInteraction.update({ state in
@@ -1374,7 +1375,7 @@ class ChatSearchHeader : View, Notifable, ChatHeaderProtocol {
         inputContextHelper.updateLayout(animated: transition.isAnimated)
 
         if let tagsView = tagsView {
-            transition.updateFrame(view: tagsView, frame: NSMakeRect(0, 35, size.width, 40))
+            transition.updateFrame(view: tagsView, frame: NSMakeRect(12, 35, max(0, size.width - 24), 40))
         }
     }
 

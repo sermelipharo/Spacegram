@@ -49,6 +49,7 @@ let package = Package(name: "SearchIntegration", platforms: [.macOS(.v12)], depe
 extension ChatSearchHeader {
  var testSearchView: ChatSearchView { searchView }
  var testContext: InputContextHelper { inputContextHelper }
+ var testTagsView: NSView? { tagsView }
  var testPeerId: PeerId? { inputInteraction.state.peerId }
  var testButtons: [ImageButton] { [prev, next, from, calendar, cancel] }
 }
@@ -65,6 +66,7 @@ extension ChatSearchHeader {
     attach_end = helper.index('\n\n        }))', attach_start)
     parts = {
         '__CONTEXT_LAYOUT__': block(helper, 'public func layout(_ animated:Bool)'),
+        '__ANCHOR_FRAME__': block(helper, 'func anchorFrame(for relativeView:') if 'func anchorFrame(for relativeView:' in helper else 'func anchorFrame(for relativeView: NSView, in view: NSView) -> NSRect { relativeView.convert(relativeView.bounds, to: view) }',
         '__LAYOUT_CONTAINER__': block(helper, 'fileprivate func layoutAccessoryContainer()'),
         '__HELPER_LAYOUT__': block(helper, 'public func updateLayout(animated: Bool)') if 'public func updateLayout(animated: Bool)' in helper else '',
         '__CONTEXT_PREPARE__': helper[start:end],
@@ -75,6 +77,18 @@ extension ChatSearchHeader {
         results = results.replace(marker, value)
     (sources / 'Results.swift').write_text(results)
     (sources / 'InlineLayout.swift').write_text(source('ChatHeaderInlineLayout'))
+    lifecycle = source('ChatHeaderController')
+    slot_start = lifecycle.index('        let layoutSlot:')
+    root_layout_start = source('ChatController').index('\n', source('ChatController').index('            header.measure(headerFrame.width)'))
+    lifecycle_parts = {
+        '__SLOT_FIELDS__': lifecycle[lifecycle.index('    private var primaryInited'):lifecycle.index('    var state:ChatHeaderState')].replace('private ', ''),
+        '__SLOT_LAYOUT__': lifecycle[slot_start:lifecycle.index('        layoutSeparators(', slot_start)],
+        '__ROOT_LAYOUT__': source('ChatController')[root_layout_start:source('ChatController').index('\n        }', root_layout_start)],
+    }
+    layout_tests = (fixtures / 'HeaderLayout.swift').read_text()
+    for marker, value in lifecycle_parts.items():
+        layout_tests = layout_tests.replace(marker, value)
+    (sources / 'HeaderLayout.swift').write_text(layout_tests)
     geometry = '''import AppKit
 struct HeaderFixture { var state: ChatHeaderState }
 struct BubbleGeometry {

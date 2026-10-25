@@ -23,6 +23,8 @@ final class ResultRowView:TableRowView {
  override func mouseUp(with event:NSEvent) {(item as? ResultRowItem)?.action()}
 }
 final class ContextController {
+ var fullWidthInset: CGFloat?
+ __ANCHOR_FRAME__
  var _frameRect=NSRect.zero
  var atomicSize=Atomic(value:NSSize.zero)
  var superview:NSView?
@@ -48,6 +50,7 @@ final class ContextController {
  __CONTEXT_LAYOUT__
 }
 final class InputContextHelper {
+ var fullWidthInset: CGFloat? { get { controller.fullWidthInset } set { controller.fullWidthInset = newValue } }
  static let containerCornerRadius:CGFloat=20
  let controller=ContextController()
  let accessoryContainerView=View()

@@ -328,6 +328,7 @@ class ChatHeaderController {
     private let chatInteraction:ChatInteraction
 
     private(set) var currentView:View?
+    private(set) var hasLayout = false
     private var glassEffect: LiquidGlassView?
 
     /// External `GlassContainerView` (typically `ChatHeaderBubblesView.sharedGlassWrapper`)
@@ -347,28 +348,28 @@ class ChatHeaderController {
 
     private var primaryView: View? {
         didSet {
-            if oldValue == nil, primaryView != nil {
+            if oldValue !== primaryView {
                 primaryInited = false
             }
         }
     }
     private var seconderyView : View? {
         didSet {
-            if oldValue == nil, seconderyView != nil {
+            if oldValue !== seconderyView {
                 seconderyInited = false
             }
         }
     }
     private var thirdView : View? {
         didSet {
-            if oldValue == nil, thirdView != nil {
+            if oldValue !== thirdView {
                 thirdInited = false
             }
         }
     }
     private var fourthView : View? {
         didSet {
-            if oldValue == nil, fourthView != nil {
+            if oldValue !== fourthView {
                 fourthInited = false
             }
         }
@@ -427,8 +428,8 @@ class ChatHeaderController {
         // caller's transition.
         let layoutSlot: (View?, Bool) -> Bool = { view, inited in
             guard let view = view else { return inited }
-            transition.updateFrame(view: view, frame: NSMakeRect(0, view.frame.minY, size.width, view.frame.height))
             let layoutTransition: ContainedViewLayoutTransition = inited ? transition : .immediate
+            layoutTransition.updateFrame(view: view, frame: NSMakeRect(0, view.frame.minY, size.width, view.frame.height))
             (view as? ChatHeaderProtocol)?.updateLayout(size: NSMakeSize(size.width, view.frame.height), transition: layoutTransition)
             return true
         }
@@ -437,6 +438,7 @@ class ChatHeaderController {
         thirdInited = layoutSlot(self.thirdView, thirdInited)
         fourthInited = layoutSlot(self.fourthView, fourthInited)
         layoutSeparators(size: size, transition: transition)
+        hasLayout = true
     }
 
     private func layoutSeparators(size: NSSize, transition: ContainedViewLayoutTransition) {
@@ -593,6 +595,7 @@ class ChatHeaderController {
                         view.addSubview(current)
                     }
                     self.currentView = current
+                    self.hasLayout = false
                 }
 
                 for (view, position, aboveView) in updated {
@@ -655,6 +658,7 @@ class ChatHeaderController {
             } else {
                 if let currentView = currentView {
                     self.currentView = nil
+                    self.hasLayout = false
                     let removingGlass = self.glassEffect
                     self.glassEffect = nil
                     self.separatorViews.removeAll()

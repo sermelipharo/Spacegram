@@ -1077,8 +1077,9 @@ public class ChatControllerView : View, ChatInputDelegate {
                 ?? NSMakeRect(inset + headerEdge, bubblesView.frame.maxY, frame.width - inset - headerEdge * 2, headerHeight)
             header.measure(headerFrame.width)
 
-            transition.updateFrame(view: currentView, frame: headerFrame)
-            header.updateLayout(size: currentView.frame.size, transition: transition)
+            let headerTransition: ContainedViewLayoutTransition = header.hasLayout ? transition : .immediate
+            headerTransition.updateFrame(view: currentView, frame: headerFrame)
+            header.updateLayout(size: currentView.frame.size, transition: headerTransition)
         }
         
         let inputHeight = inputView.height(for: frame.width)

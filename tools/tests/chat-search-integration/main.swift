@@ -100,10 +100,10 @@ func verifyResults(_ context: String) {
   }
   let anchor = host.convert(host.bounds, to: root)
   check(
-    abs(popup.frame.minX - anchor.minX) < 0.1,
-    "Results moved away from field: \(context), \(popup.frame) vs \(anchor)")
+    abs(popup.frame.minX - root.bounds.minX - 12) < 0.1,
+    "Results moved away from chat edge: \(context), \(popup.frame) vs \(anchor)")
   check(abs(popup.frame.minY - anchor.maxY - 10) < 0.1, "Results overlap the header: \(context)")
-  check(abs(popup.frame.width - anchor.width) < 0.1, "Results width differs from field: \(context)")
+  check(abs(popup.frame.width - root.bounds.width + 24) < 0.1, "Results width differs from chat: \(context)")
   check(
     root.bounds.contains(popup.frame), "Results clipped outside chat: \(context), \(popup.frame)")
   check(
@@ -196,6 +196,28 @@ for above in [false, true] {
 search.testContext.controller.genericView.position = .below
 search.testContext.controller.getHeight = nil
 #endif
+let composerContext = InputContextHelper(chatInteraction: interaction, highlightInsteadOfSelect: true)
+let composerAnchor = View(frame: NSMakeRect(80, 320, 270, 40))
+root.addSubview(composerAnchor)
+check(
+  composerContext.controller.anchorFrame(for: composerAnchor, in: root) == composerAnchor.frame,
+  "Composer suggestions no longer follow their own input width")
+composerAnchor.removeFromSuperview()
+runHeaderLayoutChecks()
+let savedState = ChatHeaderState(main: .search(operations, nil, nil, [], nil, interaction.chatLocation))
+let savedSearch = ChatSearchHeader(interaction, state: savedState, frame: NSMakeRect(0, 0, 742, 75))
+for width: CGFloat in [742, 360, 1000] {
+  savedSearch.setFrameSize(NSMakeSize(width, 75))
+  savedSearch.updateLayout(size: savedSearch.frame.size, transition: .immediate)
+  if let tags = savedSearch.testTagsView {
+    check(tags.frame.minX >= 12, "Saved tags touch the leading rounded corner")
+    check(tags.frame.maxX <= width - 12, "Saved tags touch the trailing rounded corner")
+    check(savedSearch.bounds.contains(tags.frame), "Saved tags exceed the search header bounds")
+  } else {
+    check(false, "Saved tags row is missing")
+  }
+}
+savedSearch.remove(animated: false)
 search.testButtons[4].send(event: .Click)
 drain(0.5)
 check(cancellations > 0, "Cancel did not close search")
@@ -212,7 +234,7 @@ if CommandLine.arguments.contains("--expect-regression") {
     failures.contains(where: {
       $0.contains("Results width") || $0.contains("Results moved") || $0.contains("clipped outside")
     }), "Baseline must reproduce detached/clipped result panel")
-  if failures.contains(where: { !$0.contains("viewport") && !$0.hasPrefix("Results") }) { exit(1) }
+  if failures.contains(where: { !$0.contains("viewport") && !$0.hasPrefix("Results") && !$0.hasPrefix("Saved tags") && !$0.hasPrefix("Header") }) { exit(1) }
   print(
     "Baseline reproduced cramped input and stale result-panel geometry (\(failures.count) failed checks)."
   )

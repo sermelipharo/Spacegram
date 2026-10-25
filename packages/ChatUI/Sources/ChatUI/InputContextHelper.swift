@@ -808,9 +808,20 @@ public class InputContextViewController : GenericViewController<InputContextView
     
 
     
+    var fullWidthInset: CGFloat?
+
+    func anchorFrame(for relativeView: NSView, in view: NSView) -> NSRect {
+        var frame = relativeView.convert(relativeView.bounds, to: view)
+        if let inset = fullWidthInset {
+            frame.origin.x = view.bounds.minX + inset
+            frame.size.width = max(0, view.bounds.width - inset * 2)
+        }
+        return frame
+    }
+
     public func layout(_ animated:Bool) {
         if let superview = superview, let relativeView = genericView.relativeView {
-            let relativeRect = relativeView.convert(relativeView.bounds, to: superview)
+            let relativeRect = anchorFrame(for: relativeView, in: superview)
             let availableHeight = max(0, (genericView.position == .above ? relativeRect.minY : superview.bounds.maxY - relativeRect.maxY) - 10)
             var height = min(getHeight?() ?? floor(superview.frame.height / 2), availableHeight)
             if genericView.tableView.firstItem is ContextClueRowItem {
@@ -847,6 +858,10 @@ public class InputContextHelper: NSObject {
 
     public var updatedSize: ((NSSize, Bool)->Void)?
     public var getHeight: (()->CGFloat)?
+    public var fullWidthInset: CGFloat? {
+        get { controller.fullWidthInset }
+        set { controller.fullWidthInset = newValue }
+    }
     public var didScroll:(()->Void)?
     public var onDisappear:(()->Void)?
     public var getPresentation:(()->TelegramPresentationTheme)?
@@ -884,7 +899,7 @@ public class InputContextHelper: NSObject {
             return
         }
         controller.layout(animated)
-        let relativeRect = relativeView.convert(relativeView.bounds, to: view)
+        let relativeRect = controller.anchorFrame(for: relativeView, in: view)
         let y = controller.genericView.position == .above ? relativeRect.minY - accessoryContainerView.frame.height - 10 : relativeRect.maxY + 10
         accessoryContainerView._change(pos: NSMakePoint(relativeRect.minX, y), animated: animated, duration: 0.4, timingFunction: .spring, forceAnimateIfHasAnimation: true)
         layoutAccessoryContainer()
@@ -900,7 +915,7 @@ public class InputContextHelper: NSObject {
     }
     
     public func context(with result:ChatPresentationInputQueryResult?, for view: NSView, relativeView: NSView, position: InputContextPosition = .above, selectIndex:Int? = nil, animated:Bool, inset: CGFloat = 0) {
-        controller._frameRect = NSMakeRect(inset, 0, relativeView.convert(relativeView.bounds, to: view).width, view.frame.height)
+        controller._frameRect = NSMakeRect(inset, 0, controller.anchorFrame(for: relativeView, in: view).width, view.frame.height)
         controller.updatedSize = { [weak self] size, animated in
             guard let self = self else { return }
             self.accessoryContainerView.change(size: size, animated: animated)
@@ -981,7 +996,7 @@ public class InputContextHelper: NSObject {
                 }
                 self.controller.make(with: transition, animated: animated, selectIndex: selectIndex, result: result)
 
-                let relativeRect = relativeView.convert(relativeView.bounds, to: view)
+                let relativeRect = self.controller.anchorFrame(for: relativeView, in: view)
                 container.setFrameSize(NSMakeSize(relativeRect.width, self.controller.view.frame.height))
                 if !self.controller.markAsNeedShown {
                     container.setFrameOrigin(relativeRect.minX, relativeRect.minY)
@@ -1009,7 +1024,7 @@ public class InputContextHelper: NSObject {
                 container._change(pos: NSMakePoint(relativeRect.minX, y), animated: animated, duration: 0.4, timingFunction: .spring, forceAnimateIfHasAnimation: true)
 
             } else if let relativeView = relativeView, let view = view {
-                let relativeRect = relativeView.convert(relativeView.bounds, to: view)
+                let relativeRect = self.controller.anchorFrame(for: relativeView, in: view)
                 let controllerRef: InputContextViewController? = self.controller
                 controllerRef?.viewWillDisappear(animated)
                 controllerRef?.markAsNeedShown = false
