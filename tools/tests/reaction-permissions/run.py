@@ -22,6 +22,8 @@ chips = (args.source_root / 'packages/ChatUI/Sources/ChatUI/ChatReactionsView.sw
 fixture = Path(__file__).with_name('ReactionPermissionTests.swift').read_text()
 fixture = fixture.replace('__CAN_REACT__', body(rows, 'public var canReact: Bool {'))
 fixture = fixture.replace('__CHIP_ACTION__', body(chips, 'action: { value, isFilterTag in'))
+stars = body(rows, '}, starReact: {').replace(' [weak self] in', '', 1)
+fixture = fixture.replace('__STAR_ACTION__', stars)
 with tempfile.TemporaryDirectory(prefix='reaction-permissions-') as temp:
     temp = Path(temp)
     (temp / 'main.swift').write_text(fixture)

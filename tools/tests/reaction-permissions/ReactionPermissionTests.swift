@@ -35,21 +35,39 @@ struct Message {
 }
 struct Interaction { var peer: Peer?; var isPeerSavedMessages = false }
 struct Entry { var isFakeMessage = false }
-struct Row {
+final class Row {
     var firstMessage: Message?
     var chatInteraction: Interaction
     var entry = Entry()
     var isUnsent = false
     var isFailed = false
     var unsupported = false
+    init(firstMessage: Message?, chatInteraction: Interaction) {
+        self.firstMessage = firstMessage
+        self.chatInteraction = chatInteraction
+    }
     var canReact: Bool { __CAN_REACT__ }
+    func openStars(message: Message, context: Context) {
+        let action = { [weak self] in __STAR_ACTION__ }
+        action()
+    }
 }
 enum Reaction: Equatable {
     case builtin, stars
     func toUpdate(_ file: Int?) -> Int { 1 }
 }
 struct Source { var file: Int? }
-struct Context { let peerId: PeerId }
+struct Context { let peerId: PeerId; let window = 0 }
+struct EngineMessage {
+    let message: Message
+    init(_ message: Message) { self.message = message }
+}
+enum StarSource { case message(EngineMessage) }
+struct Star_ReactionsController {
+    init(context: Context, source: StarSource) {}
+}
+var starPickers = 0
+func showModal(with controller: Star_ReactionsController, for window: Int) { starPickers += 1 }
 enum Mode { case tag, full }
 final class Engine {
     var calls = 0
@@ -74,7 +92,7 @@ let chatId = PeerId(value: 2)
 let restricted = Peer(id: chatId, allowsReactions: false)
 let allowed = Peer(id: chatId, allowsReactions: true)
 var message = Message(peers: [chatId: restricted])
-var row = Row(firstMessage: message, chatInteraction: Interaction(peer: restricted))
+let row = Row(firstMessage: message, chatInteraction: Interaction(peer: restricted))
 expect(!row.canReact, "restricted chat does not offer reaction picker or quick reaction")
 row.chatInteraction.peer = allowed
 expect(row.canReact, "current allowed rights supersede stale restricted message peer")
@@ -95,6 +113,17 @@ expect(!row.canReact, "unsent message stays unavailable")
 row.isUnsent = false
 row.firstMessage?.containsSecretMedia = true
 expect(!row.canReact, "secret media stays unavailable")
+row.firstMessage = message
+row.chatInteraction.peer = restricted
+row.openStars(message: message, context: Context(peerId: PeerId(value: 1)))
+expect(starPickers == 0, "restricted chat does not open paid-reaction picker")
+starPickers = 0
+row.chatInteraction.peer = allowed
+row.openStars(message: message, context: Context(peerId: PeerId(value: 1)))
+expect(starPickers == 1, "allowed chat opens paid-reaction picker")
+row.chatInteraction.peer = restricted
+row.openStars(message: message, context: Context(peerId: PeerId(value: 1)))
+expect(starPickers == 1, "paid-reaction picker observes changed rights")
 for value in [Reaction.builtin, .stars] {
     let engine = Engine()
     var restrictedMessage = message
