@@ -1040,6 +1040,11 @@ public class ChatRowItem: TableRowItem {
     public var canReact: Bool {
         if let message = firstMessage {
 
+            let peer = chatInteraction.peer.flatMap { $0.id == message.id.peerId ? $0 : nil } ?? message.peers[message.id.peerId]
+            guard let peer, canSendReactionsToPeer(EnginePeer(peer)) else {
+                return false
+            }
+
             if message.activeEphemeralReplacementMessage != nil {
                 return false
             }
