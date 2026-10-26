@@ -55,9 +55,22 @@ jobs:
           APP_API_HASH: ${{ secrets.APP_API_HASH }}
         run: |
           test -n "$APP_API_ID" && test -n "$APP_API_HASH"
-          f=packages/ApiCredentials/Sources/ApiCredentials/Config.swift
-          sed -i '' -E "s/return 0$/return $APP_API_ID/; s/return \"\"$/return \"$APP_API_HASH\"/" "$f"
-          grep -q "return $APP_API_ID\$" "$f"
+          python3 - <<'PY'
+          import os, re, secrets
+          path = 'packages/ApiCredentials/Sources/ApiCredentials/Config.swift'
+          source = open(path).read()
+          api_id = os.environ['APP_API_ID']
+          secret = os.environ['APP_API_HASH'].encode()
+          key = secrets.token_bytes(len(secret))
+          data = bytes(a ^ b for a, b in zip(secret, key))
+          array = lambda value: '[' + ', '.join(str(x) for x in value) + ']'
+          source = source.replace('let key: [UInt8] = []', 'let key: [UInt8] = ' + array(key), 1)
+          source = source.replace('let data: [UInt8] = []', 'let data: [UInt8] = ' + array(data), 1)
+          source = re.sub(r'return 0\n', 'return ' + api_id + '\n', source, count=1)
+          assert 'let key: [UInt8] = [' in source and 'let key: [UInt8] = []' not in source
+          assert 'return ' + api_id + '\n' in source
+          open(path, 'w').write(source)
+          PY
 
       - name: Restore native frameworks
         id: restore-frameworks
