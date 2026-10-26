@@ -120,3 +120,35 @@ func runHeaderRemovalChecks() {
   check(wrapper.ghosts.isEmpty, "Header fallback removal leaked its glass")
   wrapper.removeFromSuperview()
 }
+
+func runAnimatedGlassCornerChecks() {
+  func radius(_ glass: LiquidGlassView) -> CGFloat {
+    if #available(macOS 26.0, *), let effect = glass.effectView as? NSGlassEffectView {
+      return effect.cornerRadius
+    }
+    return glass.effectView.layer?.cornerRadius ?? -1
+  }
+  let transition = ContainedViewLayoutTransition.animated(duration: 0.2, curve: .easeOut)
+  let wrapper = GlassContainerView(frame: NSMakeRect(0, 0, 800, 100), flipped: true)
+  root.addSubview(wrapper)
+  let shared = LiquidGlassView(frame: NSMakeRect(0, 0, 600, 0), cornerRadius: 20)
+  wrapper.addGhost(shared)
+  shared.updateLayout(size: shared.bounds.size, transition: .immediate)
+  check(radius(shared) == 0, "collapsed shared glass should start with zero radius")
+  wrapper.setGhostFrame(shared, frame: NSMakeRect(10, 10, 600, 36), transition: transition)
+  check(radius(shared) == 18, "animated shared search glass must restore rounded corners")
+  wrapper.setGhostFrame(shared, frame: NSMakeRect(10, 10, 600, 0), transition: .immediate)
+  wrapper.setGhostFrame(shared, frame: NSMakeRect(10, 10, 300, 40), transition: transition)
+  check(radius(shared) == 20, "reopened shared glass must restore its radius after collapse")
+  wrapper.setGhostFrame(shared, frame: NSMakeRect(10, 10, 300, 12), transition: transition)
+  check(radius(shared) == 6, "animated shared glass must clamp its radius to the target height")
+  let standalone = LiquidGlassView(frame: NSMakeRect(0, 0, 600, 0), cornerRadius: 20)
+  root.addSubview(standalone)
+  standalone.updateLayout(size: standalone.bounds.size, transition: .immediate)
+  standalone.setAnimatorFrame(NSMakeRect(0, 0, 600, 36))
+  check(radius(standalone) == 18, "animated standalone glass must restore rounded corners")
+  standalone.setAnimatorFrame(NSMakeRect(0, 0, 600, 10))
+  check(radius(standalone) == 5, "animated standalone glass must clamp the new radius")
+  wrapper.removeFromSuperview()
+  standalone.removeFromSuperview()
+}
