@@ -166,7 +166,7 @@ jobs:
         run: |
           TAG="build-${{ github.run_number }}"
           gh release create "$TAG" "${{ steps.package.outputs.name }}" \
-            --prerelease \
+            --draft \
             --target "${{ github.sha }}" \
             --title "Spacegram build ${{ github.run_number }}" \
             --notes "$(git log -1 --format='%h %s')"
