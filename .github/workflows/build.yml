@@ -13,6 +13,8 @@ jobs:
   build:
     runs-on: macos-26
     timeout-minutes: 360
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -27,6 +29,15 @@ jobs:
           XCODE="$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)"
           sudo xcode-select -s "$XCODE/Contents/Developer"
           xcodebuild -version
+
+      - name: Compute cache keys
+        id: keys
+        run: |
+          SUBMODULES="$(git submodule status --recursive | shasum -a 256 | cut -d' ' -f1)"
+          XCODE_HASH="$(xcodebuild -version | shasum -a 256 | cut -d' ' -f1)"
+          echo "frameworks=frameworks-$XCODE_HASH-$SUBMODULES-" >> "$GITHUB_OUTPUT"
+          echo "xcode=$XCODE_HASH" >> "$GITHUB_OUTPUT"
+          echo "cas=compilation-cache-$XCODE_HASH-" >> "$GITHUB_OUTPUT"
 
       - name: Install Rust
         run: |
@@ -48,18 +59,65 @@ jobs:
           sed -i '' -E "s/return 0$/return $APP_API_ID/; s/return \"\"$/return \"$APP_API_HASH\"/" "$f"
           grep -q "return $APP_API_ID\$" "$f"
 
+      - name: Restore native frameworks
+        id: restore-frameworks
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            core-xprojects/*/build
+            packages/WalletEngine/wallet_engineFFI.xcframework
+            submodules/telegram-ios/submodules/MTProtoRustEngine/MTProtoEngineFFI.xcframework
+          key: ${{ steps.keys.outputs.frameworks }}restore
+          restore-keys: |
+            ${{ steps.keys.outputs.frameworks }}
+            frameworks-${{ steps.keys.outputs.xcode }}-
+
       - name: Build native libraries
+        id: frameworks
         env:
           CMAKE_POLICY_VERSION_MINIMUM: "3.5"
         run: sh scripts/configure_frameworks.sh
 
-      - name: Build app
+      - name: Native framework stamps
+        id: stamps
+        if: always() && steps.frameworks.conclusion != 'skipped'
         run: |
+          du -sh core-xprojects/*/build 2>/dev/null || true
+          STAMPS="$(cat core-xprojects/*/build/.framework-stamp 2>/dev/null | shasum -a 256 | cut -d' ' -f1)"
+          echo "key=${{ steps.keys.outputs.frameworks }}$STAMPS" >> "$GITHUB_OUTPUT"
+
+      - name: Save native frameworks
+        if: always() && steps.frameworks.outcome == 'success' && steps.stamps.outputs.key != steps.restore-frameworks.outputs.cache-matched-key
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            core-xprojects/*/build
+            packages/WalletEngine/wallet_engineFFI.xcframework
+            submodules/telegram-ios/submodules/MTProtoRustEngine/MTProtoEngineFFI.xcframework
+          key: ${{ steps.stamps.outputs.key }}
+
+      - name: Restore compilation cache
+        id: restore-cas
+        uses: actions/cache/restore@v4
+        with:
+          path: build/DerivedData/CompilationCache.noindex
+          key: ${{ steps.keys.outputs.cas }}${{ github.sha }}
+          restore-keys: |
+            ${{ steps.keys.outputs.cas }}
+
+      - name: Build app
+        id: build-app
+        run: |
+          set -o pipefail
           xcodebuild \
             -workspace Telegram-Mac.xcworkspace \
             -scheme Telegram \
             -configuration Debug \
-            -derivedDataPath build \
+            -destination 'generic/platform=macOS' \
+            -derivedDataPath build/DerivedData \
+            ARCHS=arm64 ONLY_ACTIVE_ARCH=YES \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            COMPILATION_CACHE_ENABLE_CACHING=YES \
             CODE_SIGN_IDENTITY=- \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=YES \
@@ -67,16 +125,48 @@ jobs:
             PROVISIONING_PROFILE_SPECIFIER= \
             CODE_SIGN_ENTITLEMENTS="$PWD/ci/Telegram-adhoc.entitlements" \
             OTHER_SWIFT_FLAGS='$(inherited) -D GITHUB' \
-            build
+            build 2>&1 | tee xcodebuild.log | grep -E '(error:|warning: unable|BUILD (SUCCEEDED|FAILED))' || true
+          du -sh build/DerivedData/* 2>/dev/null || true
+          grep -q 'BUILD SUCCEEDED' xcodebuild.log
+
+      - name: Save compilation cache
+        if: always() && steps.build-app.conclusion != 'skipped' && steps.restore-cas.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: build/DerivedData/CompilationCache.noindex
+          key: ${{ steps.keys.outputs.cas }}${{ github.sha }}
 
       - name: Package
+        id: package
         run: |
-          APP="$(find build/Build/Products -maxdepth 2 -name '*.app' | head -1)"
+          APP="$(find build/DerivedData/Build/Products -maxdepth 2 -name '*.app' | head -1)"
           echo "Built: $APP"
-          ditto -c -k --keepParent "$APP" Telegram-patched.zip
+          NAME="Spacegram-${{ github.run_number }}-$(echo "${{ github.sha }}" | cut -c1-7).zip"
+          ditto -c -k --keepParent "$APP" "$NAME"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Telegram-patched
-          path: Telegram-patched.zip
+          name: Spacegram
+          path: ${{ steps.package.outputs.name }}
           retention-days: 14
+
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-log
+          path: xcodebuild.log
+          retention-days: 7
+
+      - name: Publish release
+        if: github.ref == 'refs/heads/patches'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="build-${{ github.run_number }}"
+          gh release create "$TAG" "${{ steps.package.outputs.name }}" \
+            --prerelease \
+            --target "${{ github.sha }}" \
+            --title "Spacegram build ${{ github.run_number }}" \
+            --notes "$(git log -1 --format='%h %s')"
