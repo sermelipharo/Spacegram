@@ -5,7 +5,9 @@ public final class ApiEnvironment {
         return 0
     }
     public static var apiHash:String {
-        return ""
+        let key: [UInt8] = []
+        let data: [UInt8] = []
+        return String(decoding: zip(data, key).map { $0 ^ $1 }, as: UTF8.self)
     }
     
     public static var bundleId: String {
