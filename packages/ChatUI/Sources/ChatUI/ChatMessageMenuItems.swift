@@ -299,6 +299,18 @@ public func chatMenuItemsData(for message: Message, textLayout: (TextViewLayout?
     }
 }
 
+private func copyImageToPasteboard(path: String) -> Bool {
+    guard let path = copyToTemp(path: path, ext: "jpg") else {
+        return false
+    }
+    let url = NSURL(fileURLWithPath: path)
+    let image = NSImage(contentsOf: url as URL)
+    let pb = NSPasteboard.general
+    pb.clearContents()
+    pb.writeObjects([url, image].compactMap { $0 })
+    return true
+}
+
 private func copyRichTextMessage(_ message: Message, text: String, page: InstantPage, isTranslated: Bool) {
     copyToClipboard(text)
     guard !isTranslated else {
@@ -387,10 +399,7 @@ public func chatMenuItems(for message: Message, entry: ChatHistoryEntry?, textLa
                     }, itemImage: MenuAnimation.menu_copy.value))
                 } else if data.image != nil, let resourceData = data.resourceData, resourceData.complete {
                     items.append(ContextMenuItem(strings().chatContextCopyMedia, handler: {
-                        if let path = link(path: resourceData.path, ext: "jpg") {
-                            let pasteboard = NSPasteboard.general
-                            pasteboard.clearContents()
-                            pasteboard.writeObjects([NSURL(fileURLWithPath: path)])
+                        if copyImageToPasteboard(path: resourceData.path) {
                             showModalText(for: context.window, text: strings().contextAlertCopied)
                         }
                     }, itemImage: MenuAnimation.menu_copy_media.value, keyEquivalent: .cmdc))
@@ -545,7 +554,7 @@ public func chatMenuItems(for message: Message, entry: ChatHistoryEntry?, textLa
             }, messageId: data.message.id, context: context))
         }
         
-        if let layout = textLayout?.0, layout.selectedRange.range.location != NSNotFound, layout.selectedRange.range.length > 0, NSMaxRange(layout.selectedRange.range) <= layout.attributedString.length, mode != .pinned, mode != .scheduled, !mode.isSavedMode, mode.customChatContents == nil, entry?.additionalData.translate == nil {
+        if let layout = textLayout?.0, layout.selectedRange.range.location != NSNotFound, layout.selectedRange.range.length > 0, NSMaxRange(layout.selectedRange.range) <= layout.attributedString.length, mode != .pinned, mode != .scheduled, !mode.isSavedMode, mode.customChatContents == nil, entry?.additionalData.translate == nil, !data.isLogInteraction {
             let selectedRange = layout.selectedRange.range
             let selectedString = layout.attributedString.attributedSubstring(from: selectedRange)
             firstBlock.append(ContextMenuItem(strings().chatMessageContextQuote, handler: {
@@ -567,7 +576,7 @@ public func chatMenuItems(for message: Message, entry: ChatHistoryEntry?, textLa
         if message.attributes.contains(where: { $0 is RichTextMessageAttribute }),
            let quote = selectManager.richSelectedQuote(for: message.id),
            mode != .pinned, mode != .scheduled, !mode.isSavedMode,
-           mode.customChatContents == nil, entry?.additionalData.translate == nil {
+           mode.customChatContents == nil, entry?.additionalData.translate == nil, !data.isLogInteraction {
             firstBlock.append(ContextMenuItem(strings().chatMessageContextQuote, handler: {
                 let maximumLength = context.appConfiguration.getGeneralValue("quote_length_max", orElse: 1024)
                 if quote.text.utf16.count > maximumLength {
@@ -1360,85 +1369,83 @@ public func chatMenuItems(for message: Message, entry: ChatHistoryEntry?, textLa
                                 }, completed: {
                                     showModalText(for: context.window, text: strings().chatContextSaveRingtoneRemoveSuccess)
                                 })
-                                
+
                             }, itemImage: MenuAnimation.menu_note_slash.value))
                         }
                     }
-                    if !data.isMediaStory, data.message.pendingProcessingAttribute == nil {
-                        
-                        if isHLSVideo(file: file), let quality = HLSQualitySet(baseFile: FileMediaReference.message(message: .init(message), media: file)) {
-                            
-                            let download = ContextMenuItem(strings().galleryContextSaveVideo, itemImage: MenuAnimation.menu_save_as.value)
-                            let downloadMenu = ContextMenu()
-
-                            let downloadOrShow:(TelegramMediaFile)->Void = { file in
-                                
-                                let status = chatMessageFileStatus(context: context, message: message, file: file)
-                                |> take(1)
-                                |> deliverOnMainQueue
-                                
-                                _ = status.startStandalone(next: { status in
-                                    let text: String
-                                    if status == .Local {
-                                        text = strings().galleryContextAlertDownloaded
-                                    } else {
-                                        _ = messageMediaFileInteractiveFetched(context: context, messageId: message.id, messageReference: .init(message), file: file, userInitiated: true).startStandalone()
-                                        text = strings().galleryContextAlertDownloading
-                                    }
-                                    showModalText(for: context.window, text: text, callback: { _ in
-                                        if status == .Local {
-                                            showInFinder(file, account: context.account)
-                                        } else {
-                                            ChatHistoryUIHooks.shared.makeDownloadSearch(context)
-                                        }
-                                    })
-                                })
-                            }
-                            if context.isPremium {
-                                if let size = file.size {
-                                    downloadMenu.addItem(ContextMenuItem(strings().galleryContextOriginal + " (\(String.prettySized(with: size)))", handler: {
-                                        downloadOrShow(file)
-                                    }))
-                                }
-                            }
-                            let sorted = quality.qualityFiles.sorted(by: { $0.key < $1.key })
-                            for (key, value) in sorted {
-                                let q = "\(ChatNavigationHooks.shared.roundToStandardQuality(key))p"
-                                if let size = value.media.size {
-                                    downloadMenu.addItem(ContextMenuItem(q + " (\(String.prettySized(with: size)))", handler: {
-                                        downloadOrShow(value.media)
-                                    }))
-                                }
-                            }
-                            download.submenu = downloadMenu
-                            thirdBlock.append(download)
-                        } else {
-                            thirdBlock.append(ContextMenuItem(strings().chatContextSaveMedia, handler: {
-                                saveAs(file, account: account)
-                            }, itemImage: MenuAnimation.menu_save_as.value, keyEquivalent: .cmds))
-                        }
-                       
-                    }
-                    
-                    if data.fileFinderPath != nil {
-                    }
                 }
-               
-            } else if data.image != nil, !data.isMediaStory {
-                if resourceData.complete {
+
+                if !data.isMediaStory, data.message.pendingProcessingAttribute == nil {
+
+                    if isHLSVideo(file: file), let quality = HLSQualitySet(baseFile: FileMediaReference.message(message: .init(message), media: file)) {
+
+                        let download = ContextMenuItem(strings().galleryContextSaveVideo, itemImage: MenuAnimation.menu_save_as.value)
+                        let downloadMenu = ContextMenu()
+
+                        let downloadOrShow:(TelegramMediaFile)->Void = { file in
+
+                            let status = chatMessageFileStatus(context: context, message: message, file: file)
+                            |> take(1)
+                            |> deliverOnMainQueue
+
+                            _ = status.startStandalone(next: { status in
+                                let text: String
+                                if status == .Local {
+                                    text = strings().galleryContextAlertDownloaded
+                                } else {
+                                    _ = messageMediaFileInteractiveFetched(context: context, messageId: message.id, messageReference: .init(message), file: file, userInitiated: true).startStandalone()
+                                    text = strings().galleryContextAlertDownloading
+                                }
+                                showModalText(for: context.window, text: text, callback: { _ in
+                                    if status == .Local {
+                                        showInFinder(file, account: context.account)
+                                    } else {
+                                        ChatHistoryUIHooks.shared.makeDownloadSearch(context)
+                                    }
+                                })
+                            })
+                        }
+                        if context.isPremium {
+                            if let size = file.size {
+                                downloadMenu.addItem(ContextMenuItem(strings().galleryContextOriginal + " (\(String.prettySized(with: size)))", handler: {
+                                    downloadOrShow(file)
+                                }))
+                            }
+                        }
+                        let sorted = quality.qualityFiles.sorted(by: { $0.key < $1.key })
+                        for (key, value) in sorted {
+                            let q = "\(ChatNavigationHooks.shared.roundToStandardQuality(key))p"
+                            if let size = value.media.size {
+                                downloadMenu.addItem(ContextMenuItem(q + " (\(String.prettySized(with: size)))", handler: {
+                                    downloadOrShow(value.media)
+                                }))
+                            }
+                        }
+                        download.submenu = downloadMenu
+                        thirdBlock.append(download)
+                    } else {
+                        thirdBlock.append(ContextMenuItem(strings().chatContextSaveMedia, handler: {
+                            saveAs(file, account: account, context: context, message: message)
+                        }, itemImage: MenuAnimation.menu_save_as.value, keyEquivalent: .cmds))
+                    }
+
+                }
+
+                if data.fileFinderPath != nil {
+                }
+
+            } else if let image = data.image, !data.isMediaStory {
+                if let resourceData = data.resourceData, resourceData.complete {
                     let text = strings().chatContextCopyMedia
                     thirdBlock.append(ContextMenuItem(text, handler: {
-                        if let path = link(path: resourceData.path, ext: "jpg") {
-                            let pb = NSPasteboard.general
-                            pb.clearContents()
-                            pb.writeObjects([NSURL(fileURLWithPath: path)])
+                        if copyImageToPasteboard(path: resourceData.path) {
                             showModalText(for: context.window, text: strings().contextAlertCopied)
                         }
                     }, itemImage: MenuAnimation.menu_copy_media.value, keyEquivalent: .cmdc))
-                    thirdBlock.append(ContextMenuItem(strings().chatContextSaveMedia, handler: {
-                        savePanel(file: resourceData.path, ext: "jpg", for: context.window)
-                    }, itemImage: MenuAnimation.menu_save_as.value, keyEquivalent: .cmds))
                 }
+                thirdBlock.append(ContextMenuItem(strings().chatContextSaveMedia, handler: {
+                    saveImageAs(image, account: account, context: context, message: message)
+                }, itemImage: MenuAnimation.menu_save_as.value, keyEquivalent: .cmds))
             }
         }
         
@@ -1465,34 +1472,27 @@ public func chatMenuItems(for message: Message, entry: ChatHistoryEntry?, textLa
                         
             fifthBlock.append(reportItem)
         }
-//        if let peer = data.peer as? TelegramChannel, peer.isSupergroup, data.chatMode == .history {
-//            if peer.groupAccess.canEditMembers, let author = data.message.author {
-//                if author.id != context.peerId, data.message.flags.contains(.Incoming), author.isUser || author.isBot {
-//                    fifthBlock.append(ContextMenuItem(strings().chatContextRestrict, handler: {
-//                        _ = showModalProgress(signal: context.engine.peers.fetchChannelParticipant(peerId: chatInteraction.peerId, participantId: author.id), for: context.window).start(next: { participant in
-//                            if let participant = participant {
-//                                switch participant {
-//                                case let .member(memberId, _, _, _, _, _):
-//                                    showModal(with: RestrictedModalViewController(context, peerId: peerId, memberId: memberId, initialParticipant: participant, updated: { updatedRights in
-//                                        _ = context.peerChannelMemberCategoriesContextsManager.updateMemberBannedRights(peerId: peerId, memberId: author.id, bannedRights: updatedRights).startStandalone()
-//                                        _ = showModalSuccess(for: context.window, icon: theme.icons.successModalProgress, delay: 3.0).startStandalone()
-//                                    }), for: context.window)
-//                                default:
-//                                    break
-//                                }
-//                            }
-//                        })
-//                    }, itemImage: MenuAnimation.menu_restrict.value))
-//                    
-//                    if data.isLogInteraction {
-//                        fifthBlock.append(ContextMenuItem(strings().chatContextBan, handler: {
-//                            _ = context.peerChannelMemberCategoriesContextsManager.updateMemberBannedRights(peerId: peerId, memberId: author.id, bannedRights: TelegramChatBannedRights(flags: .banReadMessages, untilDate: .max)).startStandalone()
-//                            _ = showModalSuccess(for: context.window, icon: theme.icons.successModalProgress, delay: 3.0).startStandalone()
-//                        }, itemMode: .destruct, itemImage: MenuAnimation.menu_ban.value))
-//                    }
-//                }
-//            }
-//        }
+        let channelPeer = (data.peer as? TelegramChannel) ?? (data.chatInteraction.peer as? TelegramChannel)
+        if let channelPeer = channelPeer, !channelPeer.isChannel, channelPeer.hasPermission(.banMembers) {
+            if let author = data.message.author ?? data.message.effectiveAuthor, author.id != context.peerId, author.isUser || author.isBot {
+                let channelId = channelPeer.id
+                fifthBlock.append(ContextMenuItem(strings().chatContextRestrict, handler: {
+                    _ = showModalProgress(signal: context.engine.peers.fetchChannelParticipant(peerId: channelId, participantId: author.id), for: context.window).start(next: { participant in
+                        showModal(with: ChatHistoryUIHooks.shared.makeRestrictedModalController(context, channelId, author.id, participant, { updatedRights in
+                            _ = context.peerChannelMemberCategoriesContextsManager.updateMemberBannedRights(peerId: channelId, memberId: author.id, bannedRights: updatedRights).startStandalone()
+                            _ = showModalSuccess(for: context.window, icon: theme.icons.successModalProgress, delay: 3.0).startStandalone()
+                        }), for: context.window)
+                    })
+                }, itemImage: MenuAnimation.menu_restrict.value))
+
+                if data.isLogInteraction {
+                    fifthBlock.append(ContextMenuItem(strings().chatContextBan, handler: {
+                        _ = context.peerChannelMemberCategoriesContextsManager.updateMemberBannedRights(peerId: channelId, memberId: author.id, bannedRights: TelegramChatBannedRights(flags: [.banReadMessages], untilDate: Int32.max)).startStandalone()
+                        _ = showModalSuccess(for: context.window, icon: theme.icons.successModalProgress, delay: 3.0).startStandalone()
+                    }, itemMode: .destruct, itemImage: MenuAnimation.menu_ban.value))
+                }
+            }
+        }
         
         if data.updatingMessageMedia[messageId] != nil {
             fifthBlock.append(ContextMenuItem(strings().chatContextCancelEditing, handler: {

@@ -31,6 +31,7 @@ open class GeneralInteractedRowItem: GeneralRowItem {
     public let name:String
     public let nameAttributed: NSAttributedString?
     public var descLayout:TextViewLayout?
+    public var balancedDescriptionLayout: Bool = false
     public var nameStyle:ControlStyle
     public let thumb:GeneralThumbAdditional?
     public let activeThumb:GeneralThumbAdditional?
@@ -47,7 +48,7 @@ open class GeneralInteractedRowItem: GeneralRowItem {
             var width = self.size.width - (inset.left + inset.right)
             switch type {
             case .switchable:
-                width -= 40
+                width -= SwitchView.preferredSize.width + 8
             case .context, .contextColored:
                 width -= 40
             case .selectable:
@@ -65,7 +66,7 @@ open class GeneralInteractedRowItem: GeneralRowItem {
             var width = self.blockWidth - (insets.left + insets.right)
             switch type {
             case .switchable:
-                width -= 40
+                width -= SwitchView.preferredSize.width + 8
             case .context, .contextColored:
                 width -= 40
             case .selectable:
