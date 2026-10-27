@@ -282,10 +282,12 @@ public class ChatRowView: TableRowView, Notifable, MultipleSelectable, ChatTextS
    
     
     public var header: String? {
-        if let item = item as? ChatRowItem, let message = item.message, let peer = coreMessageMainPeer(message) {
-            if !peer.isChannel, let date = item.fullDate, let name = item.authorText?.attributedString.string {
-                return "\(name), [\(date)]:"
+        if let item = item as? ChatRowItem, let message = item.message {
+            var header = copiedMessageHeader(message, timeDifference: item.context.timeDifference) + ":"
+            if let replyLine = copiedMessageReplyLine(message, threadId: item.chatInteraction.chatLocation.threadId) {
+                header += "\n" + replyLine
             }
+            return header
         }
         return nil
     }
@@ -1475,6 +1477,12 @@ public class ChatRowView: TableRowView, Notifable, MultipleSelectable, ChatTextS
                         }
                         _ = chatInteraction?.appendText(attr)
                     }, itemImage: MenuAnimation.menu_atsign.value))
+
+                    if let chatPeer = chatInteraction?.peer, (chatPeer.isGroup || chatPeer.isSupergroup), !chatPeer.isMonoForum, chatInteraction?.isLogInteraction == false, let mode = chatInteraction?.mode, mode == .history || mode.isThreadMode || mode.isTopicMode {
+                        menu.addItem(ContextMenuItem(strings().shortcutsControllerChatSearchMessages, handler: {
+                            chatInteraction?.searchPeerMessages(peer)
+                        }, itemImage: MenuAnimation.menu_search.value))
+                    }
 
                     if let channel = chatInteraction?.peer as? TelegramChannel, let context = chatInteraction?.interactionContext, peer.id != context.peerId {
                         
