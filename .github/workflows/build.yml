@@ -15,12 +15,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: Telegram-Mac/AppIcon.icon
+          sparse-checkout: |
+            Telegram-Mac/AppIcon.icon
+            Telegram-Mac/Assets.xcassets
       - name: Compile app icon
         run: |
           xcodebuild -version
           mkdir -p out
-          xcrun actool Telegram-Mac/AppIcon.icon --compile out --platform macosx --minimum-deployment-target 26.0 --app-icon AppIcon --output-partial-info-plist out/info.plist
+          xcrun actool Telegram-Mac/Assets.xcassets Telegram-Mac/AppIcon.icon --compile out --output-format human-readable-text --notices --warnings --output-partial-info-plist out/info.plist --app-icon AppIcon --enable-on-demand-resources NO --development-region English --target-device mac --minimum-deployment-target 10.13 --platform macosx 2>&1 | tee out/log.txt
+          ! grep -q 'error:' out/log.txt
 
   build:
     runs-on: macos-26
