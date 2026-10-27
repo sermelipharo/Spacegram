@@ -969,7 +969,7 @@ final class AuthorizedApplicationContext: NSObject, SplitViewDelegate {
         }
 
                 
-        let hiddenInCompact = layout == .minimisize && UserDefaults.standard.bool(forKey: "sidebarCompactFoldersHidden")
+        let hiddenInCompact = layout == .minimisize && (UserDefaults.standard.bool(forKey: "sidebarCompactFoldersHidden") || UserDefaults.standard.bool(forKey: "spacegramCompactFoldersColumn"))
         let currentSidebar = !folders.isEmpty && folders.sidebar && !hiddenInCompact
         let previousSidebar = self.sidebarShown
 

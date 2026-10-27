@@ -5,6 +5,7 @@ import InAppSettings
 import Postbox
 import SwiftSignalKit
 import KeyboardKey
+import ChatListUI
 
 #if !APP_STORE
 import Sparkle
@@ -546,7 +547,10 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
         compactFoldersButton.setFrameSize(NSMakeSize(44, 44))
         compactFoldersButton.isHidden = true
         compactFoldersButton.set(handler: { [weak self] control in
-            if self?.compactFilterData?.sidebar == true {
+            if UserDefaults.standard.bool(forKey: "spacegramCompactFoldersColumn") {
+                guard let self else { return }
+                self.context.bindings.rootNavigation().push(ChatListUIHooks.shared.makeChatListFiltersListController(self.context))
+            } else if self?.compactFilterData?.sidebar == true {
                 let defaults = UserDefaults.standard
                 defaults.set(!defaults.bool(forKey: "sidebarCompactFoldersHidden"), forKey: "sidebarCompactFoldersHidden")
                 NotificationCenter.default.post(name: .compactFoldersVisibilityChanged, object: nil)
@@ -685,12 +689,6 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
         var items:[ContextMenuItem] = []
         let context = self.context
         
-        let isCompact = context.layout == .minimisize
-        items.append(ContextMenuItem(isCompact ? strings().spacegramExitCompactMode : strings().spacegramCompactMode, handler: { [weak self] in
-            self?.context.bindings.switchSplitLayout(isCompact ? .dual : .minimisize)
-        }, itemImage: MenuAnimation.menu_folder.value))
-        items.append(ContextSeparatorItem())
-
         if includesSettings {
             items.append(ContextMenuItem(strings().accountViewControllerTitle, handler: { [weak self] in
                 guard let self else { return }

@@ -1,0 +1,137 @@
+import Foundation
+import TGUIKit
+import Cocoa
+import TelegramCore
+import Postbox
+import Localization
+import TelegramContext
+import TelegramTheme
+import TelegramUtils
+import LocalAnimations
+import GeneralRows
+
+public final class ChatListFolderColumnItem : GeneralRowItem {
+    fileprivate let folder: ChatListFilter
+    fileprivate let isSelected: Bool
+    fileprivate let unreadCount: Int
+    fileprivate let hasUnmutedUnread: Bool
+    fileprivate let invoke: ()->Void
+    fileprivate let icon: CGImage
+    fileprivate let titleLayout: TextViewLayout
+    fileprivate let countLayout: TextViewLayout?
+
+    public init(_ initialSize: NSSize, stableId: AnyHashable, folder: ChatListFilter, selected: Bool, unreadCount: Int, hasUnmutedUnread: Bool, invoke: @escaping()->Void) {
+        self.folder = folder
+        self.isSelected = selected
+        self.unreadCount = unreadCount
+        self.hasUnmutedUnread = hasUnmutedUnread
+        self.invoke = invoke
+        self.icon = FolderIcon(folder).icon(for: selected ? .sidebarActive : .sidebar, image: { name in
+            return NSImage(named: name) ?? NSImage()
+        })
+        self.titleLayout = TextViewLayout(.initialize(string: folder.title, color: selected ? theme.colors.accent : theme.colors.text, font: .medium(10)), maximumNumberOfLines: 1, truncationType: .end)
+        if unreadCount > 0 {
+            self.countLayout = TextViewLayout(.initialize(string: unreadCount.prettyNumber, color: selected || hasUnmutedUnread ? theme.colors.accent : theme.colors.grayText, font: .medium(10)), maximumNumberOfLines: 1)
+        } else {
+            self.countLayout = nil
+        }
+        super.init(initialSize, stableId: stableId)
+    }
+
+    public override var height: CGFloat {
+        return 32
+    }
+
+    public override func makeSize(_ width: CGFloat, oldWidth: CGFloat = 0) -> Bool {
+        _ = super.makeSize(width, oldWidth: oldWidth)
+        countLayout?.measure(width: 30)
+        titleLayout.measure(width: width - 8 - 8 - 6 - 18 - 4 - 6 - (countLayout.map { $0.layoutSize.width + 4 } ?? 0))
+        return true
+    }
+
+    public override func viewClass() -> AnyClass {
+        return ChatListFolderColumnView.self
+    }
+
+    public override var accessibilityLabel: String? {
+        return folder.title
+    }
+
+    public override var accessibilityRole: NSAccessibility.Role? {
+        return .button
+    }
+
+    public override func accessibilityPerformPress() -> Bool {
+        invoke()
+        return true
+    }
+}
+
+private final class ChatListFolderColumnView: TableRowView {
+    private let plate = View()
+    private let iconView = ImageView()
+    private let titleView = TextView()
+    private let countView = TextView()
+    private let overlay = Control()
+
+    required init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        plate.layer?.cornerRadius = 10
+        if #available(macOS 10.15, *) {
+            plate.layer?.cornerCurve = .continuous
+        }
+        addSubview(plate)
+        plate.addSubview(iconView)
+        plate.addSubview(titleView)
+        plate.addSubview(countView)
+        plate.addSubview(overlay)
+        titleView.userInteractionEnabled = false
+        titleView.isSelectable = false
+        countView.userInteractionEnabled = false
+        countView.isSelectable = false
+        iconView.layer?.contentsGravity = .resizeAspect
+
+        overlay.set(handler: { [weak self] _ in
+            if let item = self?.item as? ChatListFolderColumnItem {
+                item.invoke()
+            }
+        }, for: .Click)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override var backdorColor: NSColor {
+        return .clear
+    }
+
+    override func layout() {
+        super.layout()
+        plate.frame = NSMakeRect(8, 2, frame.width - 16, frame.height - 4)
+        overlay.frame = plate.bounds
+        iconView.frame = NSMakeRect(6, (plate.frame.height - 18) / 2, 18, 18)
+        if !countView.isHidden {
+            countView.setFrameOrigin(NSMakePoint(plate.frame.width - countView.frame.width - 6, floorToScreenPixels((plate.frame.height - countView.frame.height) / 2)))
+        }
+        titleView.setFrameOrigin(NSMakePoint(iconView.frame.maxX + 4, floorToScreenPixels((plate.frame.height - titleView.frame.height) / 2)))
+    }
+
+    override func set(item: TableRowItem, animated: Bool = false) {
+        super.set(item: item, animated: animated)
+        guard let item = item as? ChatListFolderColumnItem else {
+            return
+        }
+        plate.backgroundColor = item.isSelected ? theme.colors.accent.withAlphaComponent(0.14) : .clear
+        iconView.image = item.icon
+        titleView.update(item.titleLayout)
+        if let count = item.countLayout {
+            countView.isHidden = false
+            countView.update(count)
+        } else {
+            countView.isHidden = true
+        }
+        overlay.setAccessibilityLabel(item.folder.title)
+        needsLayout = true
+    }
+}

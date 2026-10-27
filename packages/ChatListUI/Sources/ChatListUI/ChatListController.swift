@@ -26,6 +26,7 @@ import InputDataUI
 private final class Arguments {
     let context: any AccountContextProtocol
     let openFilterSettings: (ChatListFilter)->Void
+    let setupFilter: (ChatListFilter)->Void
     let createTopic: ()->Void
     let switchOffForum: ()->Void
     let getHideProgress:()->CGFloat?
@@ -41,9 +42,10 @@ private final class Arguments {
     let acceptSession:(NewSessionReview)->Void
     let revokeSession:(NewSessionReview)->Void
     let goBack:()->Void
-    init(context: any AccountContextProtocol, openFilterSettings: @escaping(ChatListFilter)->Void, createTopic: @escaping()->Void, switchOffForum: @escaping()->Void, getHideProgress:@escaping()->CGFloat?,  hideDeprecatedSystem:@escaping()->Void, applySharedFolderUpdates:@escaping(ChatFolderUpdates)->Void, hideSharedFolderUpdates: @escaping()->Void, openStory:@escaping(StoryInitialIndex?, Bool, Bool)->Void, getStoryInterfaceState:@escaping()->StoryListChatListRowItem.InterfaceState, getNavigationHeight: @escaping()->CGFloat, revealStoriesState:@escaping()->Void, getState:@escaping()->PeerListState, getDeltaProgress:@escaping()->CGFloat?, acceptSession:@escaping(NewSessionReview)->Void, revokeSession:@escaping(NewSessionReview)->Void, goBack:@escaping()->Void) {
+    init(context: any AccountContextProtocol, openFilterSettings: @escaping(ChatListFilter)->Void, setupFilter: @escaping(ChatListFilter)->Void, createTopic: @escaping()->Void, switchOffForum: @escaping()->Void, getHideProgress:@escaping()->CGFloat?,  hideDeprecatedSystem:@escaping()->Void, applySharedFolderUpdates:@escaping(ChatFolderUpdates)->Void, hideSharedFolderUpdates: @escaping()->Void, openStory:@escaping(StoryInitialIndex?, Bool, Bool)->Void, getStoryInterfaceState:@escaping()->StoryListChatListRowItem.InterfaceState, getNavigationHeight: @escaping()->CGFloat, revealStoriesState:@escaping()->Void, getState:@escaping()->PeerListState, getDeltaProgress:@escaping()->CGFloat?, acceptSession:@escaping(NewSessionReview)->Void, revokeSession:@escaping(NewSessionReview)->Void, goBack:@escaping()->Void) {
         self.context = context
         self.openFilterSettings = openFilterSettings
+        self.setupFilter = setupFilter
         self.createTopic = createTopic
         self.switchOffForum = switchOffForum
         self.getHideProgress = getHideProgress
@@ -78,6 +80,7 @@ public enum UIChatListEntryId : Hashable {
     case grace
     case custom
     case auction
+    case folder(Int32)
 }
 
 
@@ -331,6 +334,7 @@ public enum UIChatListEntry : Identifiable, Comparable {
     case grace(Bool)
     case space
     case loading(ChatListFilter)
+    case folder(ChatListFilter, selected: Bool, unreadCount: Int, hasUnmutedUnread: Bool)
     public static func == (lhs: UIChatListEntry, rhs: UIChatListEntry) -> Bool {
         switch lhs {
         case let .chat(entry, activity, additionItem, filter, generalStatus, selectedForum, appearMode, hideContent, folders, communityCategories, canPreviewChat):
@@ -411,6 +415,12 @@ public enum UIChatListEntry : Identifiable, Comparable {
             } else {
                 return false
             }
+        case let .folder(filter, selected, unreadCount, hasUnmutedUnread):
+            if case .folder(filter, selected, unreadCount, hasUnmutedUnread) = rhs {
+                return true
+            } else {
+                return false
+            }
         }
     }
 
@@ -471,6 +481,8 @@ public enum UIChatListEntry : Identifiable, Comparable {
             return ChatListIndex(pinningIndex: 0, messageIndex: MessageIndex.absoluteUpperBound().globalPredecessor())
         case .auction:
             return ChatListIndex(pinningIndex: 0, messageIndex: MessageIndex.absoluteUpperBound().globalPredecessor())
+        case .folder:
+            return ChatListIndex(pinningIndex: 0, messageIndex: MessageIndex.absoluteUpperBound().globalPredecessor())
         }
     }
 
@@ -510,6 +522,8 @@ public enum UIChatListEntry : Identifiable, Comparable {
             return .grace
         case .space:
             return .space
+        case let .folder(filter, _, _, _):
+            return .folder(ChatListUIHooks.shared.chatListFilterId(filter))
         }
     }
 
@@ -580,6 +594,10 @@ fileprivate func prepareEntries(from:[AppearanceWrapperEntry<UIChatListEntry>]?,
                 return ChatListTextActionRowItem(initialSize, stableId: entry.stableId, context: arguments.context, title: action.text, info: action.info, icon: action.icon, canDismiss: action.canDismiss, action: action.action, dismiss: action.dismiss)
             case let .auction(info):
                 return ChatListAuctionInfoItem(initialSize, stableId: entry.stableId, context: arguments.context, info: info)
+            case let .folder(filter, selected, unreadCount, hasUnmutedUnread):
+                return ChatListFolderColumnItem(initialSize, stableId: entry.stableId, folder: filter, selected: selected, unreadCount: unreadCount, hasUnmutedUnread: hasUnmutedUnread, invoke: {
+                    arguments.setupFilter(filter)
+                })
             }
         }
         
@@ -612,6 +630,8 @@ struct ChatListStateProjection: Equatable {
         let tabs: [ChatListFilter]
         let showTags: Bool
         let requestTimestamp: TimeInterval
+        let badges: ChatListFilterBadges
+        let columnFolders: Bool
     }
     let activities: PeerListState.InputActivities
     let appear: PeerListState.AppearMode
@@ -637,7 +657,8 @@ struct ChatListStateProjection: Equatable {
         self.mode = state.mode
         self.selectedForum = state.selectedForum
         self.splitState = state.splitState
-        self.filterData = Filter(filter: state.filterData.filter, tabs: state.filterData.tabs, showTags: state.filterData.showTags, requestTimestamp: state.filterData.requestTimestamp)
+        let columnFolders = state.splitState == .minimisize && UserDefaults.standard.bool(forKey: "spacegramCompactFoldersColumn")
+        self.filterData = Filter(filter: state.filterData.filter, tabs: state.filterData.tabs, showTags: state.filterData.showTags, requestTimestamp: state.filterData.requestTimestamp, badges: columnFolders ? state.filterData.badges : ChatListFilterBadges(total: 0, filters: []), columnFolders: columnFolders)
     }
 }
 
@@ -769,6 +790,7 @@ public class ChatListController<Context: AccountContextProtocol> : PeersListCont
 
     
     private let filterDisposable = MetaDisposable()
+    private var columnFoldersObserver: NSObjectProtocol?
     
 
     
@@ -845,6 +867,8 @@ public class ChatListController<Context: AccountContextProtocol> : PeersListCont
             } else {
                 context.bindings.rootNavigation().push(ChatListUIHooks.shared.makeChatListFiltersListController(context))
             }
+        }, setupFilter: { [weak self] filter in
+            self?.updateFilter { $0.withUpdatedFilter(filter) }
         }, createTopic: {
             switch mode {
             case let .forum(peerId, _, _):
@@ -1167,7 +1191,31 @@ public class ChatListController<Context: AccountContextProtocol> : PeersListCont
             
             mapped.append(.space)
 
-            let entries = mapped.sorted().map { entry -> AppearanceWrapperEntry<UIChatListEntry> in
+            var sortedEntries = mapped.sorted()
+            
+            if state.filterData.columnFolders, mode == .plain, state.forumPeer == nil, !state.filterData.tabs.isEmpty {
+                let tabs = state.filterData.tabs
+                let selectedId = state.filterData.filter.id
+                let selectedIndex = tabs.firstIndex(where: { $0.id == selectedId }) ?? 0
+                let makeFolder: (ChatListFilter) -> UIChatListEntry = { tab in
+                    let badge = state.filterData.badges.count(for: tab)
+                    return .folder(tab, selected: tab.id == selectedId, unreadCount: badge?.count ?? 0, hasUnmutedUnread: badge?.hasUnmutedUnread ?? false)
+                }
+                let isContent: (UIChatListEntry) -> Bool = { entry in
+                    switch entry {
+                    case .chat, .group, .empty, .loading:
+                        return true
+                    default:
+                        return false
+                    }
+                }
+                if let first = sortedEntries.firstIndex(where: isContent), let last = sortedEntries.lastIndex(where: isContent) {
+                    sortedEntries.insert(contentsOf: tabs.suffix(from: selectedIndex + 1).map(makeFolder), at: last + 1)
+                    sortedEntries.insert(contentsOf: tabs.prefix(through: selectedIndex).map(makeFolder), at: first)
+                }
+            }
+
+            let entries = sortedEntries.map { entry -> AppearanceWrapperEntry<UIChatListEntry> in
                 return AppearanceWrapperEntry(entry: entry, appearance: appearance)
             }
             
@@ -1278,6 +1326,11 @@ public class ChatListController<Context: AccountContextProtocol> : PeersListCont
                 }
             }
             
+        })
+        
+        self.columnFoldersObserver = NotificationCenter.default.addObserver(forName: Notification.Name("spacegramCompactFoldersColumnChanged"), object: nil, queue: .main, using: { [weak self] _ in
+            self?.updateFilter { $0.withUpdatedRequest($0.request, removeAnimation: true) }
+            self?.updateScrollerInset(animated: false)
         })
         
         let filterView = chatListFilterPreferences(engine: context.engine) |> deliverOnMainQueue |> distinctUntilChanged
@@ -1956,6 +2009,9 @@ public class ChatListController<Context: AccountContextProtocol> : PeersListCont
     
     
     deinit {
+        if let columnFoldersObserver {
+            NotificationCenter.default.removeObserver(columnFoldersObserver)
+        }
         removePeerIdGroupDisposable.dispose()
         disposable.dispose()
         reorderDisposable.dispose()

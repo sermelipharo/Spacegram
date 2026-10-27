@@ -337,6 +337,7 @@ private let _id_cloud_themes = InputDataIdentifier("_id_cloud_themes")
 private let _id_name_color = InputDataIdentifier("_id_name_color")
 
 private let _id_local_app_icon = InputDataIdentifier("_id_local_app_icon")
+private let _id_compact_folders_column = InputDataIdentifier("_id_compact_folders_column")
 private let _id_dock_icon = InputDataIdentifier("_id_dock_icon")
 
 private func appAppearanceEntries(appearance: Appearance, state: State, settings: ThemePaletteSettings, cloudThemes: [TelegramTheme], generated:  CloudThemesCachedData, autoNightSettings: AutoNightThemePreferences, animatedEmojiStickers: [String: StickerPackItem], dockIcons: TelegramApplicationIcons, dockSettings: DockSettings, arguments: AppAppearanceViewArguments) -> [InputDataEntry] {
@@ -575,6 +576,21 @@ private func appAppearanceEntries(appearance: Appearance, state: State, settings
     }
     
     #endif
+
+    entries.append(.desc(sectionId: sectionId, index: index, text: .plain(strings().spacegramCompactMode), data: .init(viewType: .textTopItem)))
+    index += 1
+    entries.append(.general(sectionId: sectionId, index: index, value: .none, error: nil, identifier: _id_compact_folders_column, data: InputDataGeneralData(name: strings().spacegramCompactFolders, color: appearance.presentation.colors.text, type: .switchable(UserDefaults.standard.bool(forKey: "spacegramCompactFoldersColumn")), viewType: .singleItem, action: {
+        let defaults = UserDefaults.standard
+        defaults.set(!defaults.bool(forKey: "spacegramCompactFoldersColumn"), forKey: "spacegramCompactFoldersColumn")
+        NotificationCenter.default.post(name: Notification.Name("spacegramCompactFoldersColumnChanged"), object: nil)
+        NotificationCenter.default.post(name: Notification.Name("compactFoldersVisibilityChanged"), object: nil)
+    })))
+    index += 1
+    entries.append(.desc(sectionId: sectionId, index: index, text: .plain(strings().spacegramCompactFoldersInfo), data: .init(viewType: .textBottomItem)))
+    index += 1
+
+    entries.append(.sectionId(sectionId, type: .normal))
+    sectionId += 1
 
     entries.append(.desc(sectionId: sectionId, index: index, text: .plain(strings().appearanceSettingsDockIcon), data: .init(viewType: .textTopItem)))
     index += 1

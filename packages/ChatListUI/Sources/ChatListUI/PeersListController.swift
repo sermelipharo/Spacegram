@@ -1829,7 +1829,7 @@ public class PeerListContainerView : Control {
         if case .forum = state.mode, state.splitState != .minimisize, !state.mode.isFullForum {
             return 0
         }
-        if state.splitState == .minimisize, state.filterData.sidebar {
+        if state.splitState == .minimisize, state.filterData.sidebar, !(UserDefaults.standard.bool(forKey: "sidebarCompactFoldersHidden") || UserDefaults.standard.bool(forKey: "spacegramCompactFoldersColumn")) {
             return 0
         }
         var offset: CGFloat = 50
