@@ -1,116 +1,273 @@
 {
-  "fill" : "system-light",
+  "features" : [
+    "refractivity",
+    "specular-location"
+  ],
+  "fill" : {
+    "linear-gradient" : [
+      "display-p3:0.40769,0.71830,1.00000,1.00000",
+      "display-p3:0.18909,0.39990,0.89307,1.00000"
+    ]
+  },
   "groups" : [
     {
-      "blend-mode" : "normal",
-      "blur-material" : 1,
-      "layers" : [
+      "blur-material-specializations" : [
         {
-          "blend-mode-specializations" : [
-            {
-              "value" : "normal"
-            },
-            {
-              "appearance" : "dark",
-              "value" : "normal"
-            }
-          ],
-          "fill-specializations" : [
-            {
-              "appearance" : "dark",
-              "value" : "automatic"
-            }
-          ],
-          "glass" : true,
-          "image-name" : "Plane.svg",
-          "name" : "Plane",
-          "position-specializations" : [
-            {
-              "idiom" : "watchOS",
-              "value" : {
-                "scale" : 1.35,
-                "translation-in-points" : [
-                  0,
-                  0
-                ]
-              }
-            }
-          ]
+          "value" : 0.1
         },
         {
-          "blend-mode-specializations" : [
-            {
-              "value" : "normal"
-            },
-            {
-              "appearance" : "dark",
-              "value" : "normal"
-            }
-          ],
+          "appearance" : "dark",
+          "value" : 0.13
+        },
+        {
+          "appearance" : "tinted",
+          "value" : 0.2
+        }
+      ],
+      "layers" : [
+        {
           "fill-specializations" : [
             {
               "value" : {
                 "linear-gradient" : [
-                  "display-p3:0.21569,0.68627,0.89020,1.00000",
-                  "srgb:0.11373,0.57647,0.82353,1.00000"
-                ]
+                  "extended-gray:1.00000,1.00000",
+                  "extended-gray:1.00000,1.00000"
+                ],
+                "orientation" : {
+                  "start" : {
+                    "x" : 0.2760726052685254,
+                    "y" : 0.7770894501168853
+                  },
+                  "stop" : {
+                    "x" : 0.3222000465485347,
+                    "y" : 0.7335054742464806
+                  }
+                }
               }
             },
             {
               "appearance" : "dark",
               "value" : {
-                "automatic-gradient" : "srgb:0.00000,0.47843,1.00000,1.00000"
+                "linear-gradient" : [
+                  "extended-gray:1.00000,1.00000",
+                  "extended-srgb:1.00000,0.21961,0.23529,1.00000"
+                ],
+                "orientation" : {
+                  "start" : {
+                    "x" : 0.3067062872157561,
+                    "y" : 0.7191098326018293
+                  },
+                  "stop" : {
+                    "x" : 0.2794394152550254,
+                    "y" : 0.7456307989980928
+                  }
+                }
               }
+            }
+          ],
+          "glass" : true,
+          "image-name" : "np_rocket_780226_000000.svg",
+          "name" : "np_rocket_780226_000000",
+          "position" : {
+            "scale" : 6.900000000000001,
+            "translation-in-points" : [
+              53.87455703735321,
+              25
+            ]
+          }
+        }
+      ],
+      "lighting" : "individual",
+      "position" : {
+        "scale" : 1,
+        "translation-in-points" : [
+          -53.72136704798045,
+          -9.92259888269571
+        ]
+      },
+      "refractivity-specializations" : [
+        {
+          "value" : {
+            "depth" : 0.7883203125,
+            "enabled" : true,
+            "strength" : -0.209453125
+          }
+        },
+        {
+          "appearance" : "dark",
+          "value" : {
+            "depth" : 0.958359375,
+            "enabled" : true,
+            "strength" : -0.2500390625
+          }
+        }
+      ],
+      "shadow-specializations" : [
+        {
+          "value" : {
+            "kind" : "layer-color",
+            "opacity" : 0.5
+          }
+        },
+        {
+          "appearance" : "dark",
+          "value" : {
+            "kind" : "neutral",
+            "opacity" : 1
+          }
+        },
+        {
+          "appearance" : "tinted",
+          "value" : {
+            "kind" : "layer-color",
+            "opacity" : 0.5
+          }
+        }
+      ],
+      "specular-specializations" : [
+        {
+          "value" : "outside"
+        },
+        {
+          "appearance" : "dark",
+          "value" : "inside"
+        },
+        {
+          "appearance" : "tinted",
+          "value" : "inside"
+        }
+      ],
+      "translucency-specializations" : [
+        {
+          "value" : {
+            "enabled" : false,
+            "value" : 1
+          }
+        },
+        {
+          "appearance" : "dark",
+          "value" : {
+            "enabled" : true,
+            "value" : 0.5
+          }
+        },
+        {
+          "appearance" : "tinted",
+          "value" : {
+            "enabled" : true,
+            "value" : 1
+          }
+        }
+      ]
+    },
+    {
+      "blend-mode-specializations" : [
+        {
+          "appearance" : "dark",
+          "value" : "plus-lighter"
+        },
+        {
+          "appearance" : "tinted",
+          "value" : "plus-lighter"
+        }
+      ],
+      "blur-material-specializations" : [
+        {
+          "appearance" : "dark",
+          "value" : null
+        }
+      ],
+      "layers" : [
+        {
+          "fill-specializations" : [
+            {
+              "value" : "system-light"
+            },
+            {
+              "appearance" : "dark",
+              "value" : "system-light"
             }
           ],
           "glass" : true,
           "hidden-specializations" : [
             {
-              "value" : false
-            },
-            {
-              "idiom" : "watchOS",
+              "appearance" : "tinted",
               "value" : false
             }
           ],
-          "image-name" : "Oval.svg",
-          "name" : "Oval",
-          "position-specializations" : [
-            {
-              "idiom" : "watchOS",
-              "value" : {
-                "scale" : 2,
-                "translation-in-points" : [
-                  0,
-                  0
-                ]
-              }
-            }
-          ]
-        }
-      ],
-      "lighting" : "combined",
-      "position-specializations" : [
-        {
-          "idiom" : "watchOS",
-          "value" : {
-            "scale" : 1,
+          "image-name" : "np_stars_343167_000000.svg",
+          "name" : "np_stars_343167_000000",
+          "position" : {
+            "scale" : 10,
             "translation-in-points" : [
-              0,
-              0
+              -20,
+              -57.07051571822194
             ]
           }
         }
       ],
-      "shadow" : {
-        "kind" : "layer-color",
-        "opacity" : 1
+      "lighting-specializations" : [
+        {
+          "appearance" : "dark",
+          "value" : "combined"
+        }
+      ],
+      "opacity-specializations" : [
+        {
+          "appearance" : "dark",
+          "value" : 0.5
+        },
+        {
+          "appearance" : "tinted",
+          "value" : 0.6
+        }
+      ],
+      "position" : {
+        "scale" : 1,
+        "translation-in-points" : [
+          19.701958148974533,
+          74.77759066125992
+        ]
       },
-      "specular" : true,
-      "translucency" : {
-        "enabled" : false,
-        "value" : 1
-      }
+      "shadow-specializations" : [
+        {
+          "value" : {
+            "kind" : "layer-color",
+            "opacity" : 0.5
+          }
+        },
+        {
+          "appearance" : "dark",
+          "value" : {
+            "kind" : "none",
+            "opacity" : 0.5
+          }
+        }
+      ],
+      "specular-specializations" : [
+        {
+          "value" : false
+        },
+        {
+          "appearance" : "dark",
+          "value" : "inside"
+        }
+      ],
+      "translucency-specializations" : [
+        {
+          "value" : {
+            "enabled" : true,
+            "value" : 0.8
+          }
+        },
+        {
+          "appearance" : "dark",
+          "value" : {
+            "enabled" : true,
+            "value" : 1
+          }
+        }
+      ]
     }
   ],
   "supported-platforms" : {
