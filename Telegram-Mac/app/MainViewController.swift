@@ -329,6 +329,7 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
     private let connectingStatusView: ConnectingStatusView = ConnectingStatusView(frame: NSRect(origin: .zero, size: ConnectingStatusView.collapsedSize))
     private let connectingStatusDisposable = MetaDisposable()
     private let compactMenuButton = ImageButton()
+    private let compactStrip = View(frame: .zero)
     private let compactFoldersButton = ImageButton()
     private var compactHasFolders = false
     private var compactFilterData: FilterData?
@@ -417,11 +418,21 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
         AppMenu.show(menu: menu, event: event, for: control)
     }
 
+    private var compactStripHeight: CGFloat {
+        return compactHasFolders ? 108 : 64
+    }
+
+    private func updateCompactInsets() {
+        tabController.updateContainerContentInsets(NSEdgeInsets(top: 0, left: 0, bottom: compactMenuVisible ? compactStripHeight : 0, right: 0), transition: .immediate)
+    }
+
     private func layoutCompactMenuButton() {
         compactMenuButton.set(image: theme.icons.tab_settings, for: .Normal)
         compactFoldersButton.set(image: MainViewController.burgerImage(color: theme.colors.grayIcon), for: .Normal)
+        compactStrip.backgroundColor = theme.colors.background
+        compactStrip.frame = NSMakeRect(0, bounds.height - compactStripHeight, bounds.width, compactStripHeight)
         let x = floor((bounds.width - compactMenuButton.frame.width) / 2)
-        let y = bounds.height - compactMenuButton.frame.height - 12
+        let y = bounds.height - compactMenuButton.frame.height - 10
         compactMenuButton.setFrameOrigin(NSMakePoint(x, y))
         compactFoldersButton.setFrameOrigin(NSMakePoint(x, y - compactFoldersButton.frame.height))
     }
@@ -527,6 +538,8 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
         compactMenuButton.set(handler: { [weak self] control in
             self?.showFastSettings(control, includesSettings: true)
         }, for: .Click)
+        compactStrip.isHidden = true
+        genericView.addSubview(compactStrip)
         genericView.addSubview(compactMenuButton)
         compactFoldersButton.autohighlight = false
         compactFoldersButton.scaleOnClick = true
@@ -549,7 +562,9 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
             self.compactMenuVisible = layout == .minimisize
             self.compactMenuButton.isHidden = !self.compactMenuVisible
             self.compactFoldersButton.isHidden = !(self.compactMenuVisible && self.compactHasFolders)
+            self.compactStrip.isHidden = !self.compactMenuVisible
             self.layoutCompactMenuButton()
+            self.updateCompactInsets()
         }))
 
         tabController.didChangedIndex = { [weak self] index in
