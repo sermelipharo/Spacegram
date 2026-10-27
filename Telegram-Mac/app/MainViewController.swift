@@ -329,6 +329,8 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
     private let connectingStatusView: ConnectingStatusView = ConnectingStatusView(frame: NSRect(origin: .zero, size: ConnectingStatusView.collapsedSize))
     private let connectingStatusDisposable = MetaDisposable()
     private let compactMenuButton = ImageButton()
+    private let compactFoldersButton = ImageButton()
+    private var compactHasFolders = false
     private let compactMenuDisposable = MetaDisposable()
     private var compactMenuVisible = false
 
@@ -395,7 +397,23 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
 
     private func layoutCompactMenuButton() {
         compactMenuButton.set(image: theme.icons.tab_settings, for: .Normal)
-        compactMenuButton.setFrameOrigin(NSMakePoint(floor((bounds.width - compactMenuButton.frame.width) / 2), bounds.height - compactMenuButton.frame.height - 12))
+        compactFoldersButton.set(image: MainViewController.burgerImage(color: theme.colors.grayIcon), for: .Normal)
+        let x = floor((bounds.width - compactMenuButton.frame.width) / 2)
+        let y = bounds.height - compactMenuButton.frame.height - 12
+        compactMenuButton.setFrameOrigin(NSMakePoint(x, y))
+        compactFoldersButton.setFrameOrigin(NSMakePoint(x, y - compactFoldersButton.frame.height))
+    }
+
+    private static func burgerImage(color: NSColor) -> CGImage {
+        let size = NSMakeSize(20, 14)
+        let image = NSImage(size: size, flipped: false) { _ in
+            color.setFill()
+            for index in 0 ..< 3 {
+                NSBezierPath(roundedRect: NSMakeRect(0, CGFloat(index) * 6, size.width, 2), xRadius: 1, yRadius: 1).fill()
+            }
+            return true
+        }
+        return image.cgImage(forProposedRect: nil, context: nil, hints: nil)!
     }
 
     private func layoutConnectingStatusView() {
@@ -488,11 +506,22 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
             self?.showFastSettings(control, includesSettings: true)
         }, for: .Click)
         genericView.addSubview(compactMenuButton)
+        compactFoldersButton.autohighlight = false
+        compactFoldersButton.scaleOnClick = true
+        compactFoldersButton.setFrameSize(NSMakeSize(44, 44))
+        compactFoldersButton.isHidden = true
+        compactFoldersButton.set(handler: { _ in
+            let defaults = UserDefaults.standard
+            defaults.set(!defaults.bool(forKey: "sidebarCompactFoldersHidden"), forKey: "sidebarCompactFoldersHidden")
+            NotificationCenter.default.post(name: .compactFoldersVisibilityChanged, object: nil)
+        }, for: .Click)
+        genericView.addSubview(compactFoldersButton)
         compactMenuDisposable.set(combineLatest(queue: .mainQueue(), context.layoutValue, chatList.filterSignal).start(next: { [weak self] layout, filterData in
             guard let self else { return }
-            let hasSidebar = filterData.sidebar && !filterData.tabs.isEmpty
-            self.compactMenuVisible = layout == .minimisize && !hasSidebar
+            self.compactHasFolders = filterData.sidebar && !filterData.tabs.isEmpty
+            self.compactMenuVisible = layout == .minimisize
             self.compactMenuButton.isHidden = !self.compactMenuVisible
+            self.compactFoldersButton.isHidden = !(self.compactMenuVisible && self.compactHasFolders)
             self.layoutCompactMenuButton()
         }))
 
@@ -614,6 +643,12 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
         var items:[ContextMenuItem] = []
         let context = self.context
         
+        let isCompact = context.layout == .minimisize
+        items.append(ContextMenuItem(isCompact ? strings().spacegramExitCompactMode : strings().spacegramCompactMode, handler: { [weak self] in
+            self?.context.bindings.switchSplitLayout(isCompact ? .dual : .minimisize)
+        }, itemImage: MenuAnimation.menu_folder.value))
+        items.append(ContextSeparatorItem())
+
         if includesSettings {
             items.append(ContextMenuItem(strings().accountViewControllerTitle, handler: { [weak self] in
                 guard let self else { return }

@@ -945,11 +945,17 @@ final class AuthorizedApplicationContext: NSObject, SplitViewDelegate {
         self.updateFoldersDisposable.set(combineLatest(queue: .mainQueue(), chatListFilterPreferences(engine: context.engine), context.layoutValue).start(next: { [weak self] value, layout in
             self?.updateLeftSidebar(with: value, layout: layout, animated: true)
         }))
+        compactFoldersObserver = NotificationCenter.default.addObserver(forName: .compactFoldersVisibilityChanged, object: nil, queue: .main) { [weak self] _ in
+            guard let self, let folders = self.folders else { return }
+            self.updateLeftSidebar(with: folders, layout: self.context.layout, animated: true)
+        }
         
        // _ready.set(.single(true))
     }
     
     private var folders: ChatListFolders?
+    private var sidebarShown: Bool?
+    private var compactFoldersObserver: NSObjectProtocol?
     private var previousLayout: SplitViewState?
     private let foldersReadyDisposable = MetaDisposable()
     private func updateLeftSidebar(with folders: ChatListFolders, layout: SplitViewState, animated: Bool) -> Void {
@@ -963,8 +969,9 @@ final class AuthorizedApplicationContext: NSObject, SplitViewDelegate {
         }
 
                 
-        let currentSidebar = !folders.isEmpty && (folders.sidebar)
-        let previousSidebar = self.folders == nil ? nil : !self.folders!.isEmpty && (self.folders!.sidebar)
+        let hiddenInCompact = layout == .minimisize && UserDefaults.standard.bool(forKey: "sidebarCompactFoldersHidden")
+        let currentSidebar = !folders.isEmpty && folders.sidebar && !hiddenInCompact
+        let previousSidebar = self.sidebarShown
 
         let readySignal: Signal<Bool, NoError>
         
@@ -1014,6 +1021,7 @@ final class AuthorizedApplicationContext: NSObject, SplitViewDelegate {
         }
         let sidebarChanged = currentSidebar != previousSidebar
         self.folders = folders
+        self.sidebarShown = currentSidebar
         self.previousLayout = layout
         if sidebarChanged {
             applyWindowChrome(forState: self.view.splitView.state)
@@ -1412,7 +1420,7 @@ final class AuthorizedApplicationContext: NSObject, SplitViewDelegate {
             pendingApplyWindowChrome = true
             return
         }
-        let hasLeftSidebar = !(folders?.isEmpty ?? true) && (folders?.sidebar ?? false)
+        let hasLeftSidebar = sidebarShown ?? false
         let mode: Window.ChromeMode = (state == .single && !hasLeftSidebar) ? .compact : .standard
         if appliedChromeMode == mode {
             return
@@ -1436,4 +1444,9 @@ extension Window {
             }
         }
     }
+}
+
+
+extension Notification.Name {
+    static let compactFoldersVisibilityChanged = Notification.Name("compactFoldersVisibilityChanged")
 }

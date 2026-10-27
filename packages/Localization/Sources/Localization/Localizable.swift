@@ -272,6 +272,8 @@ public final class L10n {
   /// Disabled
   public static var accountSettingsProxyDisabled: String  { return L10n.tr("Localizable", "AccountSettings.Proxy.Disabled") }
   /// Settings
+  public static var spacegramCompactMode: String  { return L10n.tr("Localizable", "Spacegram.CompactMode") }
+  public static var spacegramExitCompactMode: String  { return L10n.tr("Localizable", "Spacegram.ExitCompactMode") }
   public static var accountViewControllerTitle: String  { return L10n.tr("Localizable", "AccountViewController.Title") }
   /// Update
   public static var accountViewControllerUpdate: String  { return L10n.tr("Localizable", "AccountViewController.Update") }

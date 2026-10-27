@@ -95,10 +95,6 @@ final class AppSidebarUIEnvironment: SidebarUIEnvironment {
         navigateToChatListFilter(id, context: accountContext)
     }
 
-    func showCompactAccountMenu(from control: Control) {
-        accountContext.bindings.mainViewController.showFastSettings(control, includesSettings: true)
-    }
-
     func openPeerInfo(_ id: PeerId) {
         PeerInfoController.push(navigation: accountContext.bindings.rootNavigation(), context: accountContext, peerId: id)
     }
