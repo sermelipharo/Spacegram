@@ -12,7 +12,7 @@ import GeneralRows
 
 public final class ChatListFolderColumnItem : GeneralRowItem {
     fileprivate let folder: ChatListFilter
-    fileprivate let isSelected: Bool
+    fileprivate let isCurrentFolder: Bool
     fileprivate let unreadCount: Int
     fileprivate let hasUnmutedUnread: Bool
     fileprivate let invoke: ()->Void
@@ -22,7 +22,7 @@ public final class ChatListFolderColumnItem : GeneralRowItem {
 
     public init(_ initialSize: NSSize, stableId: AnyHashable, folder: ChatListFilter, selected: Bool, unreadCount: Int, hasUnmutedUnread: Bool, invoke: @escaping()->Void) {
         self.folder = folder
-        self.isSelected = selected
+        self.isCurrentFolder = selected
         self.unreadCount = unreadCount
         self.hasUnmutedUnread = hasUnmutedUnread
         self.invoke = invoke
@@ -122,7 +122,7 @@ private final class ChatListFolderColumnView: TableRowView {
         guard let item = item as? ChatListFolderColumnItem else {
             return
         }
-        plate.backgroundColor = item.isSelected ? theme.colors.accent.withAlphaComponent(0.14) : .clear
+        plate.backgroundColor = item.isCurrentFolder ? theme.colors.accent.withAlphaComponent(0.14) : .clear
         iconView.image = item.icon
         titleView.update(item.titleLayout)
         if let count = item.countLayout {
