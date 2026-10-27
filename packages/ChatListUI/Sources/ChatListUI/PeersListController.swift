@@ -3502,7 +3502,7 @@ open class PeersListController<Context: AccountContextProtocol>: TelegramGeneric
                 self.genericView.searchView.change(state: .None, true)
                 ForumUI.open(peerId, addition: false, context: context, threadId: threadId)
             }
-        case .systemDeprecated, .sharedFolderUpdated, .reveal, .empty, .loading, .space, .suspicious, .savedMessageIndex, .custom, .auction, .birthdays, .grace:
+        case .systemDeprecated, .sharedFolderUpdated, .reveal, .empty, .loading, .space, .suspicious, .savedMessageIndex, .custom, .auction, .birthdays, .grace, .folder:
             break
         }
         if close {
