@@ -336,6 +336,7 @@ private let _id_cloud_themes = InputDataIdentifier("_id_cloud_themes")
 
 private let _id_name_color = InputDataIdentifier("_id_name_color")
 
+private let _id_local_app_icon = InputDataIdentifier("_id_local_app_icon")
 private let _id_dock_icon = InputDataIdentifier("_id_dock_icon")
 
 private func appAppearanceEntries(appearance: Appearance, state: State, settings: ThemePaletteSettings, cloudThemes: [TelegramTheme], generated:  CloudThemesCachedData, autoNightSettings: AutoNightThemePreferences, animatedEmojiStickers: [String: StickerPackItem], dockIcons: TelegramApplicationIcons, dockSettings: DockSettings, arguments: AppAppearanceViewArguments) -> [InputDataEntry] {
@@ -574,7 +575,17 @@ private func appAppearanceEntries(appearance: Appearance, state: State, settings
     }
     
     #endif
-    
+
+    entries.append(.desc(sectionId: sectionId, index: index, text: .plain(strings().appearanceSettingsDockIcon), data: .init(viewType: .textTopItem)))
+    index += 1
+    entries.append(InputDataEntry.custom(sectionId: sectionId, index: index, value: .none, identifier: _id_local_app_icon, equatable: InputDataEquatable(LocalAppIcons.names), comparable: nil, item: { initialSize, stableId in
+        return LocalAppIconRowItem(initialSize, stableId: stableId, viewType: .singleItem)
+    }))
+    index += 1
+
+    entries.append(.sectionId(sectionId, type: .normal))
+    sectionId += 1
+
     return entries
 }
 
