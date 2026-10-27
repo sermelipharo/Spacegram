@@ -328,6 +328,9 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
     private let updateController: UpdateTabController
     private let connectingStatusView: ConnectingStatusView = ConnectingStatusView(frame: NSRect(origin: .zero, size: ConnectingStatusView.collapsedSize))
     private let connectingStatusDisposable = MetaDisposable()
+    private let compactMenuButton = ImageButton()
+    private let compactMenuDisposable = MetaDisposable()
+    private var compactMenuVisible = false
 
     override var containerCornerRadius: CGFloat {
         return 0
@@ -349,6 +352,7 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
         updateController.updateLayout(context.layout, parentSize: size, isChatList: true)
         updateChatListBottomOverlays()
         layoutConnectingStatusView()
+        layoutCompactMenuButton()
     }
 
     private func updateChatListBottomOverlays() {
@@ -387,6 +391,11 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
 
     override var absorbsNavigationHeaderOverflow: Bool {
         return true
+    }
+
+    private func layoutCompactMenuButton() {
+        compactMenuButton.set(image: theme.icons.tab_settings, for: .Normal)
+        compactMenuButton.setFrameOrigin(NSMakePoint(floor((bounds.width - compactMenuButton.frame.width) / 2), bounds.height - compactMenuButton.frame.height - 12))
     }
 
     private func layoutConnectingStatusView() {
@@ -471,6 +480,22 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
             self.layoutConnectingStatusView()
         }))
         
+        compactMenuButton.autohighlight = false
+        compactMenuButton.scaleOnClick = true
+        compactMenuButton.setFrameSize(NSMakeSize(44, 44))
+        compactMenuButton.isHidden = true
+        compactMenuButton.set(handler: { [weak self] control in
+            self?.showFastSettings(control, includesSettings: true)
+        }, for: .Click)
+        genericView.addSubview(compactMenuButton)
+        compactMenuDisposable.set(combineLatest(queue: .mainQueue(), context.layoutValue, chatList.filterSignal).start(next: { [weak self] layout, filterData in
+            guard let self else { return }
+            let hasSidebar = filterData.sidebar && !filterData.tabs.isEmpty
+            self.compactMenuVisible = layout == .minimisize && !hasSidebar
+            self.compactMenuButton.isHidden = !self.compactMenuVisible
+            self.layoutCompactMenuButton()
+        }))
+
         tabController.didChangedIndex = { [weak self] index in
             self?.checkSettings(index)
             self?.updateChatListBottomOverlays()
@@ -940,6 +965,7 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
         layoutDisposable.dispose()
         prefDisposable.dispose()
         settingsDisposable.dispose()
+        compactMenuDisposable.dispose()
         filterMenuDisposable.dispose()
         connectingStatusDisposable.dispose()
     }
