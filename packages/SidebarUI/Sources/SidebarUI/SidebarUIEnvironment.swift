@@ -45,6 +45,7 @@ public protocol SidebarUIEnvironment: AnyObject {
     var limits: SidebarLimits { get }
     var filterPredicates: Signal<(ChatListFilter?) -> ChatListFilterPredicate?, NoError> { get }
     func navigateToFilter(_ id: Int32)
+    func showCompactAccountMenu(from control: Control)
     func openPeerInfo(_ id: PeerId)
     func shareFolder(_ filter: ChatListFilter)
     func deleteSharedFolder(_ filter: ChatListFilter)

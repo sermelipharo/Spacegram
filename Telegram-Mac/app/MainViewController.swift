@@ -566,7 +566,7 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
     private let settingsDisposable = MetaDisposable()
     private let prefDisposable = MetaDisposable()
     private weak var quickController: ViewController?
-    private func showFastSettings(_ control:Control) {
+    func showFastSettings(_ control:Control, includesSettings: Bool = false) {
         
         
         let passcodeData = context.sharedContext.accountManager.transaction { transaction -> PostboxAccessChallengeData in
@@ -577,18 +577,26 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
 
 
         settingsDisposable.set(combineLatest(passcodeData, applicationSettings, context.sharedContext.activeAccountsWithInfo |> take(1) |> map {$0.accounts} |> deliverOnMainQueue).start(next: { [weak self] passcode, notifications, accounts in
-            self?._showFast(control: control, accounts: accounts, passcodeData: passcode, notifications: notifications)
+            self?._showFast(control: control, accounts: accounts, passcodeData: passcode, notifications: notifications, includesSettings: includesSettings)
         }))
         
        
     }
     
-    private func _showFast( control: Control, accounts: [AccountWithInfo], passcodeData: PostboxAccessChallengeData, notifications: InAppNotificationSettings) {
+    private func _showFast( control: Control, accounts: [AccountWithInfo], passcodeData: PostboxAccessChallengeData, notifications: InAppNotificationSettings, includesSettings: Bool = false) {
         
 
         var items:[ContextMenuItem] = []
         let context = self.context
         
+        if includesSettings {
+            items.append(ContextMenuItem(strings().accountViewControllerTitle, handler: { [weak self] in
+                guard let self else { return }
+                self.context.bindings.rootNavigation().push(AccountViewController(self.context))
+            }, itemImage: MenuAnimation.menu_gear.value))
+            items.append(ContextSeparatorItem())
+        }
+
         func makeItem(_ account: AccountWithInfo) -> ContextMenuItem {
             let item = ContextAccountMenuItem(account: account, context: context, handler: {
                 context.sharedContext.switchToAccount(id: account.account.id, action: nil)

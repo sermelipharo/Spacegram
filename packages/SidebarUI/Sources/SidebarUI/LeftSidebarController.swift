@@ -91,6 +91,31 @@ public final class LeftSidebarView: View {
     fileprivate let tableView = TableView()
     fileprivate var environment: SidebarUIEnvironment?
     fileprivate let edit = ImageButton()
+    fileprivate let accounts = ImageButton()
+    fileprivate let toggleFolders = ImageButton()
+    private static let foldersHiddenKey = "sidebarCompactFoldersHidden"
+
+    fileprivate var isCompact: Bool = false {
+        didSet {
+            if oldValue != isCompact {
+                updateCompactState()
+            }
+        }
+    }
+
+    fileprivate var foldersHidden: Bool {
+        get {
+            return UserDefaults.standard.bool(forKey: LeftSidebarView.foldersHiddenKey)
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: LeftSidebarView.foldersHiddenKey)
+            updateCompactState()
+        }
+    }
+
+    private var showsFolders: Bool {
+        return !(isCompact && foldersHidden)
+    }
 
     public static let inset = NSEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
 
@@ -100,6 +125,10 @@ public final class LeftSidebarView: View {
 
         addSubview(tableView)
         addSubview(edit)
+        addSubview(accounts)
+        addSubview(toggleFolders)
+        accounts.isHidden = true
+        toggleFolders.isHidden = true
         tableView.getBackgroundColor = {
             return .clear
         }
@@ -107,6 +136,19 @@ public final class LeftSidebarView: View {
         edit.autohighlight = false
         edit.scaleOnClick = true
         edit.setAccessibilityLabel(strings().chatListFilterEditFilters)
+
+        for button in [accounts, toggleFolders] {
+            button.autohighlight = false
+            button.scaleOnClick = true
+        }
+        accounts.setAccessibilityLabel(strings().accountViewControllerTitle)
+        toggleFolders.setAccessibilityLabel(strings().chatContextFolders)
+        toggleFolders.set(handler: { [weak self] _ in
+            self?.foldersHidden.toggle()
+        }, for: .Click)
+        accounts.set(handler: { [weak self] control in
+            self?.environment?.showCompactAccountMenu(from: control)
+        }, for: .Click)
 
         updateLocalizationAndTheme(theme: theme)
     }
@@ -117,6 +159,28 @@ public final class LeftSidebarView: View {
         backgroundColor = theme.colors.background
         edit.set(image: theme.icons.folders_sidebar_edit, for: .Normal)
         edit.borderColor = theme.colors.grayIcon.withAlphaComponent(0.1)
+        accounts.set(image: theme.icons.tab_settings, for: .Normal)
+        toggleFolders.set(image: LeftSidebarView.burgerImage(color: theme.colors.grayIcon), for: .Normal)
+        needsLayout = true
+    }
+
+    private static func burgerImage(color: NSColor) -> CGImage {
+        let size = NSMakeSize(20, 14)
+        let image = NSImage(size: size, flipped: false) { _ in
+            color.setFill()
+            for index in 0 ..< 3 {
+                NSBezierPath(roundedRect: NSMakeRect(0, CGFloat(index) * 6, size.width, 2), xRadius: 1, yRadius: 1).fill()
+            }
+            return true
+        }
+        return image.cgImage(forProposedRect: nil, context: nil, hints: nil)!
+    }
+
+    private func updateCompactState() {
+        accounts.isHidden = !isCompact
+        toggleFolders.isHidden = !isCompact
+        edit.isHidden = !showsFolders
+        tableView.isHidden = !showsFolders
         needsLayout = true
     }
 
@@ -138,8 +202,18 @@ public final class LeftSidebarView: View {
 
     public override func layout() {
         super.layout()
-        tableView.frame = NSMakeRect(0, 0, frame.width, frame.height - 50)
-        edit.frame = NSMakeRect(0, frame.height - 50, frame.width, 50)
+        let controlHeight: CGFloat = 44
+        var bottom = frame.height
+        if isCompact {
+            bottom -= controlHeight
+            accounts.frame = NSMakeRect(0, bottom, frame.width, controlHeight)
+            bottom -= controlHeight
+            toggleFolders.frame = NSMakeRect(0, bottom, frame.width, controlHeight)
+        }
+        let editHeight: CGFloat = showsFolders ? 50 : 0
+        bottom -= editHeight
+        tableView.frame = NSMakeRect(0, 0, frame.width, max(0, bottom))
+        edit.frame = NSMakeRect(0, bottom, frame.width, editHeight)
         edit.border = tableView.frame.height < tableView.documentSize.height ? [.Top] : []
     }
 }
@@ -215,6 +289,7 @@ public final class LeftSidebarController: SidebarViewController<LeftSidebarView>
     private let badges: Signal<ChatListFilterBadges, NoError>
 
     private let disposable = MetaDisposable()
+    private let layoutDisposable = MetaDisposable()
 
     public init(_ context: any AccountContextProtocol, environment: SidebarUIEnvironment, filterData: Signal<SidebarState, NoError>, badges: Signal<ChatListFilterBadges, NoError>) {
         self.filterData = filterData
@@ -226,6 +301,7 @@ public final class LeftSidebarController: SidebarViewController<LeftSidebarView>
 
     deinit {
         disposable.dispose()
+        layoutDisposable.dispose()
     }
 
     public override func updateLocalizationAndTheme(theme: PresentationTheme) {
@@ -242,6 +318,10 @@ public final class LeftSidebarController: SidebarViewController<LeftSidebarView>
         let environment = self.environment
 
         genericView.environment = environment
+
+        layoutDisposable.set((context.layoutValue |> deliverOnMainQueue).start(next: { [weak self] layout in
+            self?.genericView.isCompact = layout == .minimisize
+        }))
 
         let arguments = LeftSidebarArguments(context: context, environment: environment, callback: { filter in
             environment.navigateToFilter(filter.sidebarId)
