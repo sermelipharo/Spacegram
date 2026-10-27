@@ -331,6 +331,7 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
     private let compactMenuButton = ImageButton()
     private let compactFoldersButton = ImageButton()
     private var compactHasFolders = false
+    private var compactFilterData: FilterData?
     private let compactMenuDisposable = MetaDisposable()
     private var compactMenuVisible = false
 
@@ -393,6 +394,27 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
 
     override var absorbsNavigationHeaderOverflow: Bool {
         return true
+    }
+
+    private func showCompactFoldersMenu(_ control: Control) {
+        guard let filterData = compactFilterData, let event = NSApp.currentEvent else {
+            return
+        }
+        let context = self.context
+        let menu = ContextMenu(betterInside: true)
+        for tab in filterData.tabs {
+            let title: String
+            switch tab {
+            case .allChats:
+                title = strings().chatListFilterAllChats
+            case let .filter(_, folderTitle, _, _):
+                title = folderTitle.text
+            }
+            menu.addItem(ContextMenuItem(title, handler: {
+                navigateToChatListFilter(tab.id, context: context)
+            }, state: tab.id == filterData.filter.id ? .on : nil))
+        }
+        AppMenu.show(menu: menu, event: event, for: control)
     }
 
     private func layoutCompactMenuButton() {
@@ -510,15 +532,20 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
         compactFoldersButton.scaleOnClick = true
         compactFoldersButton.setFrameSize(NSMakeSize(44, 44))
         compactFoldersButton.isHidden = true
-        compactFoldersButton.set(handler: { _ in
-            let defaults = UserDefaults.standard
-            defaults.set(!defaults.bool(forKey: "sidebarCompactFoldersHidden"), forKey: "sidebarCompactFoldersHidden")
-            NotificationCenter.default.post(name: .compactFoldersVisibilityChanged, object: nil)
+        compactFoldersButton.set(handler: { [weak self] control in
+            if self?.compactFilterData?.sidebar == true {
+                let defaults = UserDefaults.standard
+                defaults.set(!defaults.bool(forKey: "sidebarCompactFoldersHidden"), forKey: "sidebarCompactFoldersHidden")
+                NotificationCenter.default.post(name: .compactFoldersVisibilityChanged, object: nil)
+            } else {
+                self?.showCompactFoldersMenu(control)
+            }
         }, for: .Click)
         genericView.addSubview(compactFoldersButton)
         compactMenuDisposable.set(combineLatest(queue: .mainQueue(), context.layoutValue, chatList.filterSignal).start(next: { [weak self] layout, filterData in
             guard let self else { return }
-            self.compactHasFolders = filterData.sidebar && !filterData.tabs.isEmpty
+            self.compactFilterData = filterData
+            self.compactHasFolders = !filterData.isEmpty
             self.compactMenuVisible = layout == .minimisize
             self.compactMenuButton.isHidden = !self.compactMenuVisible
             self.compactFoldersButton.isHidden = !(self.compactMenuVisible && self.compactHasFolders)
