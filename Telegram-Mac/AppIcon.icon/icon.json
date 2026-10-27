@@ -103,19 +103,6 @@
           }
         }
       ],
-      "specular-specializations": [
-        {
-          "value": "outside"
-        },
-        {
-          "appearance": "dark",
-          "value": "inside"
-        },
-        {
-          "appearance": "tinted",
-          "value": "inside"
-        }
-      ],
       "translucency-specializations": [
         {
           "value": {
@@ -221,15 +208,6 @@
             "kind": "none",
             "opacity": 0.5
           }
-        }
-      ],
-      "specular-specializations": [
-        {
-          "value": false
-        },
-        {
-          "appearance": "dark",
-          "value": "inside"
         }
       ],
       "translucency-specializations": [
