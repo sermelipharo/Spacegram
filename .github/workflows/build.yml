@@ -10,6 +10,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  icon:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: Telegram-Mac/AppIcon.icon
+      - name: Compile app icon
+        run: |
+          xcodebuild -version
+          mkdir -p out
+          xcrun actool Telegram-Mac/AppIcon.icon --compile out --platform macosx --minimum-deployment-target 26.0 --app-icon AppIcon --output-partial-info-plist out/info.plist
+
   build:
     runs-on: macos-26
     timeout-minutes: 360
