@@ -1210,8 +1210,8 @@ public class ChatListController<Context: AccountContextProtocol> : PeersListCont
                     }
                 }
                 if let first = sortedEntries.firstIndex(where: isContent), let last = sortedEntries.lastIndex(where: isContent) {
-                    sortedEntries.insert(contentsOf: tabs.suffix(from: selectedIndex + 1).map(makeFolder), at: last + 1)
-                    sortedEntries.insert(contentsOf: tabs.prefix(through: selectedIndex).map(makeFolder), at: first)
+                    sortedEntries.insert(contentsOf: tabs.prefix(through: selectedIndex).reversed().map(makeFolder), at: last + 1)
+                    sortedEntries.insert(contentsOf: tabs.suffix(from: selectedIndex + 1).reversed().map(makeFolder), at: first)
                 }
             }
 
