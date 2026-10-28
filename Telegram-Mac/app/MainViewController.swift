@@ -6,6 +6,7 @@ import Postbox
 import SwiftSignalKit
 import KeyboardKey
 import ChatListUI
+import SettingsUI
 
 #if !APP_STORE
 import Sparkle
@@ -694,6 +695,12 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
                 guard let self else { return }
                 self.context.bindings.rootNavigation().push(AccountViewController(self.context))
             }, itemImage: MenuAnimation.menu_gear.value))
+            if !context.isSupport {
+                items.append(ContextMenuItem("Developer Menu", handler: { [weak self] in
+                    guard let self else { return }
+                    self.context.bindings.rootNavigation().push(DeveloperViewController(context: self.context))
+                }, itemImage: MenuAnimation.menu_gear.value))
+            }
             items.append(ContextSeparatorItem())
         }
 

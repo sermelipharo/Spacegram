@@ -114,7 +114,7 @@ private final class ChatListFolderColumnView: TableRowView {
         overlay.frame = plate.bounds
         iconView.frame = NSMakeRect(6, (plate.frame.height - 18) / 2, 18, 18)
         if !countView.isHidden {
-            countBadge.frame = NSMakeRect(iconView.frame.maxX - 8, iconView.frame.minY - 3, countView.frame.width + 8, 12)
+            countBadge.frame = NSMakeRect(max(0, iconView.frame.minX - 5), iconView.frame.minY - 3, countView.frame.width + 8, 12)
             countBadge.layer?.cornerRadius = 6
             countView.setFrameOrigin(NSMakePoint(countBadge.frame.minX + 4, countBadge.frame.minY + floorToScreenPixels((12 - countView.frame.height) / 2)))
         }
