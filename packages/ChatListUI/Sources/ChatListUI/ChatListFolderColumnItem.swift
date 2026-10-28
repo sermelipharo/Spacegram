@@ -165,7 +165,7 @@ final class ChatListFolderDock: NSVisualEffectView {
         state = .active
         wantsLayer = true
         addSubview(separator)
-        separator.backgroundColor = NSColor.separatorColor.withAlphaComponent(0.5)
+        separator.backgroundColor = theme.colors.border.withAlphaComponent(0.6)
         isHidden = true
     }
 
