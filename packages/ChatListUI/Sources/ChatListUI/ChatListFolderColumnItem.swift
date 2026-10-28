@@ -31,7 +31,7 @@ public final class ChatListFolderColumnItem : GeneralRowItem {
         })
         self.titleLayout = TextViewLayout(.initialize(string: folder.title, color: selected ? theme.colors.accent : theme.colors.text, font: .medium(10)), maximumNumberOfLines: 1, truncationType: .end)
         if unreadCount > 0 {
-            self.countLayout = TextViewLayout(.initialize(string: unreadCount.prettyNumber, color: selected || hasUnmutedUnread ? theme.colors.accent : theme.colors.grayText, font: .medium(10)), maximumNumberOfLines: 1)
+            self.countLayout = TextViewLayout(.initialize(string: unreadCount.prettyNumber, color: .white, font: .medium(8)), maximumNumberOfLines: 1)
         } else {
             self.countLayout = nil
         }
@@ -44,8 +44,8 @@ public final class ChatListFolderColumnItem : GeneralRowItem {
 
     public override func makeSize(_ width: CGFloat, oldWidth: CGFloat = 0) -> Bool {
         _ = super.makeSize(width, oldWidth: oldWidth)
-        countLayout?.measure(width: 30)
-        titleLayout.measure(width: width - 8 - 8 - 6 - 18 - 4 - 6 - (countLayout.map { $0.layoutSize.width + 4 } ?? 0))
+        countLayout?.measure(width: 24)
+        titleLayout.measure(width: width - 8 - 8 - 6 - 18 - 4 - 4)
         return true
     }
 
@@ -72,6 +72,7 @@ private final class ChatListFolderColumnView: TableRowView {
     private let iconView = ImageView()
     private let titleView = TextView()
     private let countView = TextView()
+    private let countBadge = View()
     private let overlay = Control()
 
     required init(frame frameRect: NSRect) {
@@ -83,6 +84,7 @@ private final class ChatListFolderColumnView: TableRowView {
         addSubview(plate)
         plate.addSubview(iconView)
         plate.addSubview(titleView)
+        plate.addSubview(countBadge)
         plate.addSubview(countView)
         plate.addSubview(overlay)
         titleView.userInteractionEnabled = false
@@ -112,7 +114,9 @@ private final class ChatListFolderColumnView: TableRowView {
         overlay.frame = plate.bounds
         iconView.frame = NSMakeRect(6, (plate.frame.height - 18) / 2, 18, 18)
         if !countView.isHidden {
-            countView.setFrameOrigin(NSMakePoint(plate.frame.width - countView.frame.width - 6, floorToScreenPixels((plate.frame.height - countView.frame.height) / 2)))
+            countBadge.frame = NSMakeRect(iconView.frame.maxX - 8, iconView.frame.minY - 3, countView.frame.width + 8, 12)
+            countBadge.layer?.cornerRadius = 6
+            countView.setFrameOrigin(NSMakePoint(countBadge.frame.minX + 4, countBadge.frame.minY + floorToScreenPixels((12 - countView.frame.height) / 2)))
         }
         titleView.setFrameOrigin(NSMakePoint(iconView.frame.maxX + 4, floorToScreenPixels((plate.frame.height - titleView.frame.height) / 2)))
     }
@@ -127,9 +131,12 @@ private final class ChatListFolderColumnView: TableRowView {
         titleView.update(item.titleLayout)
         if let count = item.countLayout {
             countView.isHidden = false
+            countBadge.isHidden = false
+            countBadge.backgroundColor = item.isCurrentFolder || item.hasUnmutedUnread ? theme.colors.accent : theme.colors.grayIcon
             countView.update(count)
         } else {
             countView.isHidden = true
+            countBadge.isHidden = true
         }
         overlay.setAccessibilityLabel(item.folder.title)
         needsLayout = true

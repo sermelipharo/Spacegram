@@ -1195,11 +1195,11 @@ public class ChatListController<Context: AccountContextProtocol> : PeersListCont
             
             if state.filterData.columnFolders, mode == .plain, state.forumPeer == nil, !state.filterData.tabs.isEmpty {
                 let tabs = state.filterData.tabs
-                let selectedId = state.filterData.filter.id
-                let selectedIndex = tabs.firstIndex(where: { $0.id == selectedId }) ?? 0
+                let selectedId = ChatListUIHooks.shared.chatListFilterId(state.filterData.filter)
+                let selectedIndex = tabs.firstIndex(where: { ChatListUIHooks.shared.chatListFilterId($0) == selectedId }) ?? 0
                 let makeFolder: (ChatListFilter) -> UIChatListEntry = { tab in
                     let badge = state.filterData.badges.count(for: tab)
-                    return .folder(tab, selected: tab.id == selectedId, unreadCount: badge?.count ?? 0, hasUnmutedUnread: badge?.hasUnmutedUnread ?? false)
+                    return .folder(tab, selected: ChatListUIHooks.shared.chatListFilterId(tab) == selectedId, unreadCount: badge?.count ?? 0, hasUnmutedUnread: badge?.hasUnmutedUnread ?? false)
                 }
                 let isContent: (UIChatListEntry) -> Bool = { entry in
                     switch entry {
