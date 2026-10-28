@@ -52,6 +52,14 @@ jobs:
           sudo xcode-select -s "$XCODE/Contents/Developer"
           xcodebuild -version
 
+      - name: Raise deployment targets for Xcode 27
+        if: inputs.xcode == '27'
+        run: |
+          find . -name project.pbxproj -not -path './build/*' -print0 | xargs -0 sed -i '' -E 's/MACOSX_DEPLOYMENT_TARGET = (10\.[0-9]+|11\.0);/MACOSX_DEPLOYMENT_TARGET = 12.0;/'
+          find . -name Package.swift -not -path './build/*' -print0 | xargs -0 sed -i '' -E 's/\.macOS\(\.v10_[0-9]+\)/.macOS(.v12)/; s/\.macOS\(\.v11\)/.macOS(.v12)/'
+          grep -rlE 'mmacosx-version-min=(10\.[0-9]+|11\.0)' core-xprojects scripts 2>/dev/null | while read -r f; do sed -i '' -E 's/mmacosx-version-min=(10\.[0-9]+|11\.0)/mmacosx-version-min=12.0/g' "$f"; done
+          git diff --stat | tail -1
+
       - name: Compute cache keys
         id: keys
         run: |
