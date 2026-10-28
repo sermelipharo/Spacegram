@@ -958,6 +958,8 @@ final class AuthorizedApplicationContext: NSObject, SplitViewDelegate {
     private var compactFoldersObserver: NSObjectProtocol?
     private var previousLayout: SplitViewState?
     private let foldersReadyDisposable = MetaDisposable()
+    private var sidebarWasHiddenInCompact = false
+
     private func updateLeftSidebar(with folders: ChatListFolders, layout: SplitViewState, animated: Bool) -> Void {
         
         if self.window is AppWindow {
@@ -972,6 +974,8 @@ final class AuthorizedApplicationContext: NSObject, SplitViewDelegate {
         let hiddenInCompact = layout == .minimisize && (UserDefaults.standard.bool(forKey: "sidebarCompactFoldersHidden") || UserDefaults.standard.bool(forKey: "spacegramCompactFoldersColumn"))
         let currentSidebar = !folders.isEmpty && folders.sidebar && !hiddenInCompact
         let previousSidebar = self.sidebarShown
+        let compactTransition = hiddenInCompact || self.sidebarWasHiddenInCompact
+        self.sidebarWasHiddenInCompact = hiddenInCompact
 
         let readySignal: Signal<Bool, NoError>
         
@@ -992,7 +996,9 @@ final class AuthorizedApplicationContext: NSObject, SplitViewDelegate {
             }
             let enlarge: CGFloat
 
-            if currentSidebar && previousSidebar != nil {
+            if compactTransition {
+                enlarge = 0
+            } else if currentSidebar && previousSidebar != nil {
                 enlarge = leftSidebarWidth
             } else {
                 if previousSidebar == true {

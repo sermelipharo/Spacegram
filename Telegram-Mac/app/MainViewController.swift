@@ -302,10 +302,29 @@ final class UpdateTabController: GenericViewController<UpdateTabView> {
 
 
 final class MainController_View: View {
+    let compactBlur = NSVisualEffectView(frame: .zero)
+    var translucent = false {
+        didSet {
+            compactBlur.isHidden = !translucent
+            backgroundColor = translucent ? .clear : presentation.colors.background
+        }
+    }
+
     required init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         layer?.masksToBounds = false
         backgroundColor = presentation.colors.background
+        compactBlur.material = .sidebar
+        compactBlur.blendingMode = .behindWindow
+        compactBlur.state = .active
+        compactBlur.autoresizingMask = [.width, .height]
+        compactBlur.isHidden = true
+        addSubview(compactBlur, positioned: .below, relativeTo: nil)
+    }
+
+    override func layout() {
+        super.layout()
+        compactBlur.frame = bounds
     }
 
     required init?(coder: NSCoder) {
@@ -314,7 +333,7 @@ final class MainController_View: View {
 
     override func updateLocalizationAndTheme(theme: PresentationTheme) {
         super.updateLocalizationAndTheme(theme: theme)
-        backgroundColor = theme.colors.background
+        backgroundColor = translucent ? .clear : theme.colors.background
     }
 }
 
@@ -431,7 +450,7 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
     private func layoutCompactMenuButton() {
         compactMenuButton.set(image: theme.icons.tab_settings, for: .Normal)
         compactFoldersButton.set(image: MainViewController.burgerImage(color: theme.colors.grayIcon), for: .Normal)
-        compactStrip.backgroundColor = theme.colors.background
+        compactStrip.backgroundColor = .clear
         compactStrip.frame = NSMakeRect(0, bounds.height - compactStripHeight, bounds.width, compactStripHeight)
         let x = floor((bounds.width - compactMenuButton.frame.width) / 2)
         let y = bounds.height - compactMenuButton.frame.height - 10
@@ -568,6 +587,11 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
             self.compactMenuButton.isHidden = !self.compactMenuVisible
             self.compactFoldersButton.isHidden = !(self.compactMenuVisible && self.compactHasFolders)
             self.compactStrip.isHidden = !self.compactMenuVisible
+            self.genericView.translucent = self.compactMenuVisible
+            if let window = self.genericView.window {
+                window.isOpaque = !self.compactMenuVisible
+                window.backgroundColor = self.compactMenuVisible ? .clear : theme.colors.background
+            }
             self.layoutCompactMenuButton()
             self.updateCompactInsets()
         }))

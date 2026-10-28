@@ -39,13 +39,13 @@ public final class ChatListFolderColumnItem : GeneralRowItem {
     }
 
     public override var height: CGFloat {
-        return 32
+        return 28
     }
 
     public override func makeSize(_ width: CGFloat, oldWidth: CGFloat = 0) -> Bool {
         _ = super.makeSize(width, oldWidth: oldWidth)
         countLayout?.measure(width: 24)
-        titleLayout.measure(width: width - 8 - 8 - 6 - 18 - 4 - 4)
+        titleLayout.measure(width: width - 8 - 8 - 6 - 14 - 4 - 4)
         return true
     }
 
@@ -67,7 +67,7 @@ public final class ChatListFolderColumnItem : GeneralRowItem {
     }
 }
 
-private final class ChatListFolderColumnView: TableRowView {
+fileprivate final class ChatListFolderColumnView: TableRowView {
     private let plate = View()
     private let iconView = ImageView()
     private let titleView = TextView()
@@ -112,7 +112,7 @@ private final class ChatListFolderColumnView: TableRowView {
         super.layout()
         plate.frame = NSMakeRect(8, 2, frame.width - 16, frame.height - 4)
         overlay.frame = plate.bounds
-        iconView.frame = NSMakeRect(6, (plate.frame.height - 18) / 2, 18, 18)
+        iconView.frame = NSMakeRect(6, (plate.frame.height - 14) / 2, 14, 14)
         if !countView.isHidden {
             countBadge.frame = NSMakeRect(max(0, iconView.frame.minX - 5), iconView.frame.minY - 3, countView.frame.width + 8, 12)
             countBadge.layer?.cornerRadius = 6
@@ -144,14 +144,18 @@ private final class ChatListFolderColumnView: TableRowView {
 }
 
 final class ChatListFolderDock: NSVisualEffectView {
-    private let table = TableView(frame: .zero)
-    private(set) var rowCount: Int = 0
+    private let separator = View()
+    private var items: [ChatListFolderColumnItem] = []
+    private var rows: [ChatListFolderColumnView] = []
 
-    static let rowHeight: CGFloat = 32
-    static let padding: CGFloat = 6
+    static let rowHeight: CGFloat = 28
+
+    var rowCount: Int {
+        return items.count
+    }
 
     var contentHeight: CGFloat {
-        return rowCount > 0 ? CGFloat(rowCount) * ChatListFolderDock.rowHeight + ChatListFolderDock.padding * 2 : 0
+        return items.isEmpty ? 0 : CGFloat(items.count) * ChatListFolderDock.rowHeight + 4
     }
 
     override init(frame frameRect: NSRect) {
@@ -160,8 +164,8 @@ final class ChatListFolderDock: NSVisualEffectView {
         blendingMode = .withinWindow
         state = .active
         wantsLayer = true
-        addSubview(table)
-        table.backgroundColor = .clear
+        addSubview(separator)
+        separator.backgroundColor = NSColor.separatorColor.withAlphaComponent(0.5)
         isHidden = true
     }
 
@@ -171,17 +175,23 @@ final class ChatListFolderDock: NSVisualEffectView {
 
     override func layout() {
         super.layout()
-        table.frame = NSMakeRect(0, ChatListFolderDock.padding, bounds.width, max(0, bounds.height - ChatListFolderDock.padding * 2))
+        separator.frame = NSMakeRect(0, bounds.height - 0.5, bounds.width, 0.5)
+        for (i, row) in rows.enumerated() {
+            _ = items[i].makeSize(bounds.width)
+            row.frame = NSMakeRect(0, bounds.height - 2 - CGFloat(i + 1) * ChatListFolderDock.rowHeight, bounds.width, ChatListFolderDock.rowHeight)
+            row.set(item: items[i])
+        }
     }
 
     func set(folders: [(folder: ChatListFilter, unreadCount: Int, hasUnmutedUnread: Bool)], invoke: @escaping (ChatListFilter) -> Void) {
-        table.removeAll()
+        rows.forEach { $0.removeFromSuperview() }
         let size = NSMakeSize(max(bounds.width, 90), ChatListFolderDock.rowHeight)
-        for (i, entry) in folders.enumerated() {
-            let item = ChatListFolderColumnItem(size, stableId: AnyHashable(i), folder: entry.folder, selected: false, unreadCount: entry.unreadCount, hasUnmutedUnread: entry.hasUnmutedUnread, invoke: { invoke(entry.folder) })
-            _ = table.addItem(item: item)
+        items = folders.enumerated().map { i, entry in
+            ChatListFolderColumnItem(size, stableId: AnyHashable(i), folder: entry.folder, selected: false, unreadCount: entry.unreadCount, hasUnmutedUnread: entry.hasUnmutedUnread, invoke: { invoke(entry.folder) })
         }
-        rowCount = folders.count
-        isHidden = folders.isEmpty
+        rows = items.map { _ in ChatListFolderColumnView(frame: NSMakeRect(0, 0, size.width, size.height)) }
+        rows.forEach { addSubview($0, positioned: .below, relativeTo: separator) }
+        isHidden = items.isEmpty
+        needsLayout = true
     }
 }
