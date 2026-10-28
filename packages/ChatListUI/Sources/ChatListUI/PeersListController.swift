@@ -1055,12 +1055,24 @@ public class PeerListContainerView : Control {
     
     public var layoutBottomOverlay: ((CGFloat, ContainedViewLayoutTransition) -> NSRect?)?
 
+    let folderDock = ChatListFolderDock(frame: .zero)
+
+    var folderDockHeight: CGFloat = 0
+
+    func updateFolderDock(folders: [(folder: ChatListFilter, unreadCount: Int, hasUnmutedUnread: Bool)], invoke: @escaping (ChatListFilter) -> Void) {
+        folderDock.set(folders: folders, invoke: invoke)
+        folderDockHeight = folderDock.contentHeight
+        tableView.contentInsets.bottom = contentBottomInset + folderDockHeight
+        updateScrollerInset(animated: false)
+        updateLayout(frame.size, transition: .immediate)
+    }
+
     public var contentBottomInset: CGFloat = 0 {
         didSet {
             guard contentBottomInset != oldValue else {
                 return
             }
-            tableView.contentInsets.bottom = contentBottomInset
+            tableView.contentInsets.bottom = contentBottomInset + folderDockHeight
             updateScrollerInset(animated: false)
             updateBottomControls(size: frame.size, transition: .immediate)
         }
@@ -1141,6 +1153,7 @@ public class PeerListContainerView : Control {
 
         addSubview(backgroundView)
         addSubview(tableView)
+        addSubview(folderDock)
         addSubview(containerView)
         addSubview(borderView)
         addSubview(forumSeparatorView)
@@ -1691,6 +1704,7 @@ public class PeerListContainerView : Control {
 
         ContainedViewLayoutTransition.immediate.updateFrame(view: tableView, frame: NSMakeRect(0, 0, size.width, size.height - bottomInset))
         updateTableMask(spaceHeight: navigationHeight)
+        folderDock.frame = NSMakeRect(0, size.height - contentBottomInset - folderDockHeight, size.width, folderDockHeight)
 
         updateBottomControls(size: size, transition: transition)
         
@@ -1881,7 +1895,7 @@ public class PeerListContainerView : Control {
             }
             return true
         })
-        tableView.scrollerInsets = .init(left: 0, right: 0, top: top, bottom: contentBottomInset)
+        tableView.scrollerInsets = .init(left: 0, right: 0, top: top, bottom: contentBottomInset + folderDockHeight)
         updateTableMask(spaceHeight: top)
     }
 

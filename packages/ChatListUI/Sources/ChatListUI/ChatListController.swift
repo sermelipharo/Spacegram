@@ -1008,6 +1008,13 @@ public class ChatListController<Context: AccountContextProtocol> : PeersListCont
         
         
         
+        let updateDock: ([(folder: ChatListFilter, unreadCount: Int, hasUnmutedUnread: Bool)]) -> Void = { [weak self, arguments] folders in
+            Queue.mainQueue().async {
+                self?.genericView.updateFolderDock(folders: folders, invoke: { filter in
+                    arguments.setupFilter(filter)
+                })
+            }
+        }
         let list:Signal<TableUpdateTransition, NoError> = combineLatest(queue: prepareQueue, chatHistoryView, appearanceSignal, stateUpdater |> map(ChatListStateProjection.init) |> distinctUntilChanged, appNotificationSettings(accountManager: context.sharedContext.accountManager), additionalSettings(accountManager: context.sharedContext.accountManager), storyState, suspiciousSession, suggestions, birthdays, myBirthday, subState, appConfiguration, context.giftAuctionsManager.state, PendingChatRemovals.get(context).hiddenPeerIds) |> mapToQueue { value, appearance, state, inAppSettings, additionalSettings, storyState, suspiciousSession, suggestionsAndCrashReport, birthdays, myBirthday, missingBalanceState, appConfiguration, activeAuctions, pendingRemovals -> Signal<TableUpdateTransition, NoError> in
             let (suggestions, crashReportCard) = suggestionsAndCrashReport
                                 
@@ -1209,10 +1216,16 @@ public class ChatListController<Context: AccountContextProtocol> : PeersListCont
                         return false
                     }
                 }
-                if let first = sortedEntries.firstIndex(where: isContent), let last = sortedEntries.lastIndex(where: isContent) {
+                if let last = sortedEntries.lastIndex(where: isContent) {
                     sortedEntries.insert(contentsOf: tabs.prefix(through: selectedIndex).reversed().map(makeFolder), at: last + 1)
-                    sortedEntries.insert(contentsOf: tabs.suffix(from: selectedIndex + 1).reversed().map(makeFolder), at: first)
                 }
+                let dockFolders = tabs.suffix(from: selectedIndex + 1).map { tab -> (folder: ChatListFilter, unreadCount: Int, hasUnmutedUnread: Bool) in
+                    let badge = state.filterData.badges.count(for: tab)
+                    return (folder: tab, unreadCount: badge?.count ?? 0, hasUnmutedUnread: badge?.hasUnmutedUnread ?? false)
+                }
+                updateDock(dockFolders)
+            } else {
+                updateDock([])
             }
 
             let entries = sortedEntries.map { entry -> AppearanceWrapperEntry<UIChatListEntry> in

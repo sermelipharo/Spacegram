@@ -142,3 +142,46 @@ private final class ChatListFolderColumnView: TableRowView {
         needsLayout = true
     }
 }
+
+final class ChatListFolderDock: NSVisualEffectView {
+    private let table = TableView(frame: .zero)
+    private(set) var rowCount: Int = 0
+
+    static let rowHeight: CGFloat = 32
+    static let padding: CGFloat = 6
+
+    var contentHeight: CGFloat {
+        return rowCount > 0 ? CGFloat(rowCount) * ChatListFolderDock.rowHeight + ChatListFolderDock.padding * 2 : 0
+    }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        material = .sidebar
+        blendingMode = .withinWindow
+        state = .active
+        wantsLayer = true
+        addSubview(table)
+        table.backgroundColor = .clear
+        isHidden = true
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func layout() {
+        super.layout()
+        table.frame = NSMakeRect(0, ChatListFolderDock.padding, bounds.width, max(0, bounds.height - ChatListFolderDock.padding * 2))
+    }
+
+    func set(folders: [(folder: ChatListFilter, unreadCount: Int, hasUnmutedUnread: Bool)], invoke: @escaping (ChatListFilter) -> Void) {
+        table.removeAll()
+        let size = NSMakeSize(max(bounds.width, 90), ChatListFolderDock.rowHeight)
+        for (i, entry) in folders.enumerated() {
+            let item = ChatListFolderColumnItem(size, stableId: AnyHashable(i), folder: entry.folder, selected: false, unreadCount: entry.unreadCount, hasUnmutedUnread: entry.hasUnmutedUnread, invoke: { invoke(entry.folder) })
+            _ = table.addItem(item: item)
+        }
+        rowCount = folders.count
+        isHidden = folders.isEmpty
+    }
+}
