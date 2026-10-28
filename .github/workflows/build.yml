@@ -2,11 +2,18 @@ name: Build
 
 on:
   workflow_dispatch:
+    inputs:
+      runner:
+        description: Runner label
+        default: macos-26
+      xcode:
+        description: Xcode major version
+        default: "26"
   push:
     branches: [patches]
 
 concurrency:
-  group: build-${{ github.ref }}
+  group: build-${{ github.ref }}-${{ inputs.runner || 'default' }}
   cancel-in-progress: true
 
 jobs:
@@ -26,7 +33,7 @@ jobs:
           ! grep -q 'error:' out/log.txt
 
   build:
-    runs-on: macos-26
+    runs-on: ${{ inputs.runner || 'macos-26' }}
     timeout-minutes: 360
     permissions:
       contents: write
@@ -41,7 +48,7 @@ jobs:
 
       - name: Select Xcode
         run: |
-          XCODE="$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)"
+          XCODE="$(ls -d /Applications/Xcode_${{ inputs.xcode || '26' }}*.app | sort -V | tail -1)"
           sudo xcode-select -s "$XCODE/Contents/Developer"
           xcodebuild -version
 
