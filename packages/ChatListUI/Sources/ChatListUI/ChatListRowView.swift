@@ -1712,7 +1712,15 @@ public class ChatListRowView: TableRowView, RevealTableView {
 
         let previousStableId = self.item?.stableId
         animateSelectionChange = animated && previousStableId == item.stableId
-        defer { animateSelectionChange = false }
+        defer {
+            animateSelectionChange = false
+            if (item as? ChatListRowItem)?.context.layout == .minimisize {
+                DispatchQueue.main.async { [weak self] in
+                    guard let self, self.item === item else { return }
+                    self.applyCompactPhotoScale()
+                }
+            }
+        }
 
         if let item = item as? ChatListRowItem {
             if item.isCollapsed {
@@ -3291,6 +3299,13 @@ public class ChatListRowView: TableRowView, RevealTableView {
         forumTopicTextView?.updateScale(backingScaleFactor)
     }
 
+    private func applyCompactPhotoScale() {
+        guard let layer = photo.layer else { return }
+        let ax = layer.anchorPoint.x * layer.bounds.width
+        let ay = layer.anchorPoint.y * layer.bounds.height
+        layer.setAffineTransform(CGAffineTransform(translationX: ax, y: ay).scaledBy(x: 0.75, y: 0.75).translatedBy(x: -ax, y: -ay))
+    }
+
     public override func layout() {
         super.layout()
        
@@ -3300,11 +3315,7 @@ public class ChatListRowView: TableRowView, RevealTableView {
 
         if item.context.layout == .minimisize {
             photo.setFrameOrigin(NSMakePoint(floorToScreenPixels(backingScaleFactor, (containerView.frame.width - photo.frame.width) / 2), floorToScreenPixels(backingScaleFactor, (containerView.frame.height - photo.frame.height) / 2)))
-            if let layer = photo.layer {
-                let ax = layer.anchorPoint.x * layer.bounds.width
-                let ay = layer.anchorPoint.y * layer.bounds.height
-                layer.setAffineTransform(CGAffineTransform(translationX: ax, y: ay).scaledBy(x: 0.75, y: 0.75).translatedBy(x: -ax, y: -ay))
-            }
+            applyCompactPhotoScale()
         } else {
             photo.setFrameOrigin(NSMakePoint(10, 10))
             photo.layer?.setAffineTransform(.identity)
