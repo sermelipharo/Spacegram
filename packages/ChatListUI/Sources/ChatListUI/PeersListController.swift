@@ -1668,7 +1668,7 @@ public class PeerListContainerView : Control {
         let navigationHeight_ = self.navigationHeight
 
         transition.updateFrame(view: self.borderView, frame: CGRect(origin: CGPoint(x: 0, y: navigationHeight_ - .borderSize), size: CGSize(width: size.width, height: .borderSize)))
-        transition.updateAlpha(view: borderView, alpha: state.searchState == .Focus ? 0 : 1)
+        transition.updateAlpha(view: borderView, alpha: state.searchState == .Focus || folderDockHeight > 0 ? 0 : 1)
 
         forumSeparatorView.isHidden = !mode.isForumLike || displaysFullForumHeader
         transition.updateFrame(view: forumSeparatorView, frame: NSMakeRect(0, 0, .borderSize, size.height))

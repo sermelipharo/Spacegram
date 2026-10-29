@@ -144,7 +144,6 @@ fileprivate final class ChatListFolderColumnView: TableRowView {
 }
 
 final class ChatListFolderDock: NSVisualEffectView {
-    private let separator = View()
     private var items: [ChatListFolderColumnItem] = []
     private var rows: [ChatListFolderColumnView] = []
 
@@ -161,11 +160,9 @@ final class ChatListFolderDock: NSVisualEffectView {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         material = .sidebar
-        blendingMode = .withinWindow
+        blendingMode = .behindWindow
         state = .active
         wantsLayer = true
-        addSubview(separator)
-        separator.backgroundColor = theme.colors.border.withAlphaComponent(0.6)
         isHidden = true
     }
 
@@ -175,7 +172,6 @@ final class ChatListFolderDock: NSVisualEffectView {
 
     override func layout() {
         super.layout()
-        separator.frame = NSMakeRect(0, bounds.height - 0.5, bounds.width, 0.5)
         for (i, row) in rows.enumerated() {
             _ = items[i].makeSize(bounds.width)
             row.frame = NSMakeRect(0, bounds.height - 2 - CGFloat(i + 1) * ChatListFolderDock.rowHeight, bounds.width, ChatListFolderDock.rowHeight)
@@ -190,7 +186,7 @@ final class ChatListFolderDock: NSVisualEffectView {
             ChatListFolderColumnItem(size, stableId: AnyHashable(i), folder: entry.folder, selected: false, unreadCount: entry.unreadCount, hasUnmutedUnread: entry.hasUnmutedUnread, invoke: { invoke(entry.folder) })
         }
         rows = items.map { _ in ChatListFolderColumnView(frame: NSMakeRect(0, 0, size.width, size.height)) }
-        rows.forEach { addSubview($0, positioned: .below, relativeTo: separator) }
+        rows.forEach { addSubview($0) }
         isHidden = items.isEmpty
         needsLayout = true
     }
