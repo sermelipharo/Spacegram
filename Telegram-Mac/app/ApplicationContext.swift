@@ -1200,7 +1200,7 @@ final class AuthorizedApplicationContext: NSObject, SplitViewDelegate {
             }
             rightController.empty = emptyController
             let fixedCount = self.view.splitView.fixedControllerCount
-            self.view.splitView.insertController(controller: leftController, proportion: SplitProportion(min: 90, max: 90), at: fixedCount)
+            self.view.splitView.insertController(controller: leftController, proportion: SplitProportion(min: 64, max: 64), at: fixedCount)
             self.view.splitView.insertController(controller: rightController, proportion: rightProp, at: fixedCount + 1)
         default:
             break

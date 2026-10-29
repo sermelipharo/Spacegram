@@ -181,7 +181,7 @@ final class ChatListFolderDock: NSVisualEffectView {
 
     func set(folders: [(folder: ChatListFilter, unreadCount: Int, hasUnmutedUnread: Bool)], invoke: @escaping (ChatListFilter) -> Void) {
         rows.forEach { $0.removeFromSuperview() }
-        let size = NSMakeSize(max(bounds.width, 90), ChatListFolderDock.rowHeight)
+        let size = NSMakeSize(max(bounds.width, 64), ChatListFolderDock.rowHeight)
         items = folders.enumerated().map { i, entry in
             ChatListFolderColumnItem(size, stableId: AnyHashable(i), folder: entry.folder, selected: false, unreadCount: entry.unreadCount, hasUnmutedUnread: entry.hasUnmutedUnread, invoke: { invoke(entry.folder) })
         }

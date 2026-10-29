@@ -1653,7 +1653,7 @@ public class PeerListContainerView : Control {
         
         var inset: CGFloat = 0
         
-        let containerSize = NSMakeSize(state.splitState == .minimisize ? 90 : size.width, offset)
+        let containerSize = NSMakeSize(state.splitState == .minimisize ? 64 : size.width, offset)
                 
         transition.updateFrame(view: self.containerView, frame: NSMakeRect(0, inset, containerSize.width, offset))
         

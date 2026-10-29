@@ -2637,7 +2637,7 @@ public class ChatListRowItem: TableRowItem {
             }
         }
         if shouldHideContent {
-            return context.layout == .minimisize ? 56 : 70
+            return context.layout == .minimisize ? 64 : 70
         }
         
         switch mode {
