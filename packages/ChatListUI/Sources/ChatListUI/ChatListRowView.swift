@@ -3224,11 +3224,22 @@ public class ChatListRowView: TableRowView, RevealTableView {
     }
     
     
+    private func visualPhotoFrame(_ item: ChatListRowItem) -> NSRect {
+        let frame = photo.frame
+        guard item.context.layout == .minimisize else {
+            return frame
+        }
+        let scale: CGFloat = 0.75
+        let size = NSMakeSize(frame.width * scale, frame.height * scale)
+        return NSMakeRect(frame.midX - size.width / 2, frame.midY - size.height / 2, size.width, size.height)
+    }
+
     public func badgeShortPoint(_ item: ChatListRowItem) -> NSPoint {
         if let badgeView = badgeShortView {
             let point: NSPoint
-            let y = self.containerView.frame.height - badgeView.frame.height - (item.margin + 1)
-            point = NSMakePoint(photo.frame.maxX - badgeView.frame.width, y)
+            let visual = visualPhotoFrame(item)
+            let y = item.context.layout == .minimisize ? visual.maxY - badgeView.frame.height + 2 : self.containerView.frame.height - badgeView.frame.height - (item.margin + 1)
+            point = NSMakePoint(visual.maxX - badgeView.frame.width + (item.context.layout == .minimisize ? 3 : 0), y)
             return point
         }
         return .zero
