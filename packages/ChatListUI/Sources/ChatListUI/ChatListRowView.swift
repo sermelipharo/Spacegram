@@ -1712,15 +1712,7 @@ public class ChatListRowView: TableRowView, RevealTableView {
 
         let previousStableId = self.item?.stableId
         animateSelectionChange = animated && previousStableId == item.stableId
-        defer {
-            animateSelectionChange = false
-            if (item as? ChatListRowItem)?.context.layout == .minimisize {
-                DispatchQueue.main.async { [weak self] in
-                    guard let self, self.item === item else { return }
-                    self.applyCompactPhotoScale()
-                }
-            }
-        }
+        defer { animateSelectionChange = false }
 
         if let item = item as? ChatListRowItem {
             if item.isCollapsed {
@@ -2136,6 +2128,9 @@ public class ChatListRowView: TableRowView, RevealTableView {
              }
             
             
+            if let rowItem = item as? ChatListRowItem {
+                updatePhotoSize(rowItem)
+            }
             photo.setState(account: item.context.account, state: item.photo)
 
             if item.isAnonynousSavedMessage {
@@ -3233,13 +3228,7 @@ public class ChatListRowView: TableRowView, RevealTableView {
     
     
     private func visualPhotoFrame(_ item: ChatListRowItem) -> NSRect {
-        let frame = photo.frame
-        guard item.context.layout == .minimisize else {
-            return frame
-        }
-        let scale: CGFloat = 0.75
-        let size = NSMakeSize(frame.width * scale, frame.height * scale)
-        return NSMakeRect(frame.midX - size.width / 2, frame.midY - size.height / 2, size.width, size.height)
+        return photo.frame
     }
 
     public func badgeShortPoint(_ item: ChatListRowItem) -> NSPoint {
@@ -3299,11 +3288,11 @@ public class ChatListRowView: TableRowView, RevealTableView {
         forumTopicTextView?.updateScale(backingScaleFactor)
     }
 
-    private func applyCompactPhotoScale() {
-        guard let layer = photo.layer else { return }
-        let dx = layer.bounds.width * (0.5 - layer.anchorPoint.x)
-        let dy = layer.bounds.height * (0.5 - layer.anchorPoint.y)
-        layer.setAffineTransform(CGAffineTransform(translationX: dx, y: dy).scaledBy(x: 0.75, y: 0.75).translatedBy(x: -dx, y: -dy))
+    private func updatePhotoSize(_ item: ChatListRowItem) {
+        let side: CGFloat = item.context.layout == .minimisize ? 38 : 50
+        if photo.frame.size.width != side {
+            photo.setFrameSize(NSMakeSize(side, side))
+        }
     }
 
     public override func layout() {
@@ -3313,12 +3302,11 @@ public class ChatListRowView: TableRowView, RevealTableView {
                 
         photo.userInteractionEnabled = (item.avatarStoryIndicator != nil || item.showsCommunityDropdown) && item.context.layout != .minimisize && item.selectedForum == nil
 
+        updatePhotoSize(item)
         if item.context.layout == .minimisize {
             photo.setFrameOrigin(NSMakePoint(floorToScreenPixels(backingScaleFactor, (containerView.frame.width - photo.frame.width) / 2), floorToScreenPixels(backingScaleFactor, (containerView.frame.height - photo.frame.height) / 2)))
-            applyCompactPhotoScale()
         } else {
             photo.setFrameOrigin(NSMakePoint(10, 10))
-            photo.layer?.setAffineTransform(.identity)
         }
 
         if let animatedView {
