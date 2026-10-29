@@ -3299,7 +3299,7 @@ public class ChatListRowView: TableRowView, RevealTableView {
         photo.userInteractionEnabled = (item.avatarStoryIndicator != nil || item.showsCommunityDropdown) && item.context.layout != .minimisize && item.selectedForum == nil
 
         if item.context.layout == .minimisize {
-            photo.setFrameOrigin(NSMakePoint(floorToScreenPixels(backingScaleFactor, (containerView.frame.width - photo.frame.width) / 2), 3))
+            photo.setFrameOrigin(NSMakePoint(floorToScreenPixels(backingScaleFactor, (containerView.frame.width - photo.frame.width) / 2), floorToScreenPixels(backingScaleFactor, (containerView.frame.height - photo.frame.height) / 2)))
             if let layer = photo.layer {
                 let ax = layer.anchorPoint.x * layer.bounds.width
                 let ay = layer.anchorPoint.y * layer.bounds.height
