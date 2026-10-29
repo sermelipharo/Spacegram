@@ -134,7 +134,8 @@ fileprivate final class ChatListFolderColumnView: TableRowView {
     }
 }
 
-final class ChatListFolderDock: NSVisualEffectView {
+final class ChatListFolderDock: NSView {
+    private let backdrop: NSView
     private var items: [ChatListFolderColumnItem] = []
     private var rows: [ChatListFolderColumnView] = []
 
@@ -149,11 +150,20 @@ final class ChatListFolderDock: NSVisualEffectView {
     }
 
     override init(frame frameRect: NSRect) {
+        if #available(macOS 26.0, *) {
+            let glass = NSGlassEffectView(frame: frameRect)
+            glass.cornerRadius = 0
+            backdrop = glass
+        } else {
+            let effect = NSVisualEffectView(frame: frameRect)
+            effect.material = .sidebar
+            effect.blendingMode = .withinWindow
+            effect.state = .active
+            backdrop = effect
+        }
         super.init(frame: frameRect)
-        material = .sidebar
-        blendingMode = .withinWindow
-        state = .active
         wantsLayer = true
+        addSubview(backdrop)
         isHidden = true
     }
 
@@ -163,6 +173,7 @@ final class ChatListFolderDock: NSVisualEffectView {
 
     override func layout() {
         super.layout()
+        backdrop.frame = bounds
         for (i, row) in rows.enumerated() {
             _ = items[i].makeSize(bounds.width)
             row.frame = NSMakeRect(0, bounds.height - 2 - CGFloat(i + 1) * ChatListFolderDock.rowHeight, bounds.width, ChatListFolderDock.rowHeight)
