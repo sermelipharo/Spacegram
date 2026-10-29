@@ -160,7 +160,7 @@ final class ChatListFolderDock: NSVisualEffectView {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         material = .sidebar
-        blendingMode = .behindWindow
+        blendingMode = .withinWindow
         state = .active
         wantsLayer = true
         isHidden = true
