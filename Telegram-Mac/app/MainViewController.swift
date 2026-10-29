@@ -591,6 +591,7 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
             if let window = self.genericView.window {
                 window.isOpaque = !self.compactMenuVisible
                 window.backgroundColor = self.compactMenuVisible ? .clear : theme.colors.background
+                window.standardWindowButton(.zoomButton)?.isHidden = self.compactMenuVisible
             }
             self.layoutCompactMenuButton()
             self.updateCompactInsets()

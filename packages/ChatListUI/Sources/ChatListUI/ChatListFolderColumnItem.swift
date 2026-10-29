@@ -35,7 +35,7 @@ public final class ChatListFolderColumnItem : GeneralRowItem {
     }
 
     public override var height: CGFloat {
-        return 34
+        return 36
     }
 
     public override func makeSize(_ width: CGFloat, oldWidth: CGFloat = 0) -> Bool {
@@ -106,11 +106,11 @@ fileprivate final class ChatListFolderColumnView: TableRowView {
         plate.frame = NSMakeRect(4, 1, frame.width - 8, frame.height - 2)
         overlay.frame = plate.bounds
         if !countView.isHidden {
-            countBadge.frame = NSMakeRect(plate.frame.width - countView.frame.width - 10, plate.frame.height - 14, countView.frame.width + 8, 12)
+            countBadge.frame = NSMakeRect(plate.frame.width - countView.frame.width - 10, 0, countView.frame.width + 8, 12)
             countBadge.layer?.cornerRadius = 6
             countView.setFrameOrigin(NSMakePoint(countBadge.frame.minX + 4, countBadge.frame.minY + floorToScreenPixels((12 - countView.frame.height) / 2)))
         }
-        titleView.setFrameOrigin(NSMakePoint(floorToScreenPixels((plate.frame.width - titleView.frame.width) / 2), 4))
+        titleView.setFrameOrigin(NSMakePoint(floorToScreenPixels((plate.frame.width - titleView.frame.width) / 2), floorToScreenPixels((plate.frame.height - titleView.frame.height) / 2) + 2))
     }
 
     override func set(item: TableRowItem, animated: Bool = false) {
@@ -139,7 +139,7 @@ final class ChatListFolderDock: NSView {
     private var items: [ChatListFolderColumnItem] = []
     private var rows: [ChatListFolderColumnView] = []
 
-    static let rowHeight: CGFloat = 34
+    static let rowHeight: CGFloat = 36
 
     var rowCount: Int {
         return items.count

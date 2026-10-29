@@ -3301,9 +3301,9 @@ public class ChatListRowView: TableRowView, RevealTableView {
 
     private func applyCompactPhotoScale() {
         guard let layer = photo.layer else { return }
-        let ax = layer.anchorPoint.x * layer.bounds.width
-        let ay = layer.anchorPoint.y * layer.bounds.height
-        layer.setAffineTransform(CGAffineTransform(translationX: ax, y: ay).scaledBy(x: 0.75, y: 0.75).translatedBy(x: -ax, y: -ay))
+        let dx = layer.bounds.width * (0.5 - layer.anchorPoint.x)
+        let dy = layer.bounds.height * (0.5 - layer.anchorPoint.y)
+        layer.setAffineTransform(CGAffineTransform(translationX: dx, y: dy).scaledBy(x: 0.75, y: 0.75).translatedBy(x: -dx, y: -dy))
     }
 
     public override func layout() {
