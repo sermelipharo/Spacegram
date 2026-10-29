@@ -16,7 +16,6 @@ public final class ChatListFolderColumnItem : GeneralRowItem {
     fileprivate let unreadCount: Int
     fileprivate let hasUnmutedUnread: Bool
     fileprivate let invoke: ()->Void
-    fileprivate let icon: CGImage
     fileprivate let titleLayout: TextViewLayout
     fileprivate let countLayout: TextViewLayout?
 
@@ -26,9 +25,6 @@ public final class ChatListFolderColumnItem : GeneralRowItem {
         self.unreadCount = unreadCount
         self.hasUnmutedUnread = hasUnmutedUnread
         self.invoke = invoke
-        self.icon = FolderIcon(folder).icon(for: selected ? .sidebarActive : .sidebar, image: { name in
-            return NSImage(named: name) ?? NSImage()
-        })
         self.titleLayout = TextViewLayout(.initialize(string: folder.title, color: selected ? theme.colors.accent : theme.colors.text, font: .medium(10)), maximumNumberOfLines: 1, truncationType: .end)
         if unreadCount > 0 {
             self.countLayout = TextViewLayout(.initialize(string: unreadCount.prettyNumber, color: .white, font: .medium(8)), maximumNumberOfLines: 1)
@@ -45,7 +41,7 @@ public final class ChatListFolderColumnItem : GeneralRowItem {
     public override func makeSize(_ width: CGFloat, oldWidth: CGFloat = 0) -> Bool {
         _ = super.makeSize(width, oldWidth: oldWidth)
         countLayout?.measure(width: 24)
-        titleLayout.measure(width: width - 8 - 8 - 6 - 14 - 4 - 4)
+        titleLayout.measure(width: width - 16 - 8)
         return true
     }
 
@@ -69,7 +65,6 @@ public final class ChatListFolderColumnItem : GeneralRowItem {
 
 fileprivate final class ChatListFolderColumnView: TableRowView {
     private let plate = View()
-    private let iconView = ImageView()
     private let titleView = TextView()
     private let countView = TextView()
     private let countBadge = View()
@@ -82,7 +77,6 @@ fileprivate final class ChatListFolderColumnView: TableRowView {
             plate.layer?.cornerCurve = .continuous
         }
         addSubview(plate)
-        plate.addSubview(iconView)
         plate.addSubview(titleView)
         plate.addSubview(countBadge)
         plate.addSubview(countView)
@@ -91,7 +85,6 @@ fileprivate final class ChatListFolderColumnView: TableRowView {
         titleView.isSelectable = false
         countView.userInteractionEnabled = false
         countView.isSelectable = false
-        iconView.layer?.contentsGravity = .resizeAspect
 
         overlay.set(handler: { [weak self] _ in
             if let item = self?.item as? ChatListFolderColumnItem {
@@ -112,13 +105,12 @@ fileprivate final class ChatListFolderColumnView: TableRowView {
         super.layout()
         plate.frame = NSMakeRect(8, 2, frame.width - 16, frame.height - 4)
         overlay.frame = plate.bounds
-        iconView.frame = NSMakeRect(6, (plate.frame.height - 14) / 2, 14, 14)
         if !countView.isHidden {
-            countBadge.frame = NSMakeRect(max(0, iconView.frame.minX - 5), iconView.frame.minY - 3, countView.frame.width + 8, 12)
+            countBadge.frame = NSMakeRect(plate.frame.width - countView.frame.width - 8, plate.frame.height - 12, countView.frame.width + 8, 12)
             countBadge.layer?.cornerRadius = 6
             countView.setFrameOrigin(NSMakePoint(countBadge.frame.minX + 4, countBadge.frame.minY + floorToScreenPixels((12 - countView.frame.height) / 2)))
         }
-        titleView.setFrameOrigin(NSMakePoint(iconView.frame.maxX + 4, floorToScreenPixels((plate.frame.height - titleView.frame.height) / 2)))
+        titleView.setFrameOrigin(NSMakePoint(floorToScreenPixels((plate.frame.width - titleView.frame.width) / 2), floorToScreenPixels((plate.frame.height - titleView.frame.height) / 2)))
     }
 
     override func set(item: TableRowItem, animated: Bool = false) {
@@ -127,7 +119,6 @@ fileprivate final class ChatListFolderColumnView: TableRowView {
             return
         }
         plate.backgroundColor = item.isCurrentFolder ? theme.colors.accent.withAlphaComponent(0.14) : .clear
-        iconView.image = item.icon
         titleView.update(item.titleLayout)
         if let count = item.countLayout {
             countView.isHidden = false
