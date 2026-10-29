@@ -1910,7 +1910,7 @@ public class PeerListContainerView : Control {
     }
     
     public func updateBottomControls(size: NSSize, transition: ContainedViewLayoutTransition) {
-        var bottomControlsY = size.height - contentBottomInset
+        var bottomControlsY = size.height - contentBottomInset - folderDockHeight
         for view in [downloads as NSView?, removalUndo as NSView?].compactMap({ $0 }) {
             let edge: CGFloat = 12
             let y = bottomControlsY - view.frame.height - edge
