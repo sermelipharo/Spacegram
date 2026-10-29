@@ -2567,10 +2567,10 @@ public class ChatListRowView: TableRowView, RevealTableView {
              if let component = item.avatarStoryIndicator {
                  
                  
-                 self.photo.update(component: component, availableSize: NSMakeSize(44, 44), transition: transition)
+                 self.photo.update(component: component, availableSize: NSMakeSize(photo.frame.width - 6, photo.frame.height - 6), transition: transition)
                  
-                 self.photoVideoView?._change(size: NSMakeSize(44, 44), animated: animated)
-                 self.archivedPhoto?._change(size: NSMakeSize(44, 44), animated: animated)
+                 self.photoVideoView?._change(size: NSMakeSize(photo.frame.width - 6, photo.frame.height - 6), animated: animated)
+                 self.archivedPhoto?._change(size: NSMakeSize(photo.frame.width - 6, photo.frame.height - 6), animated: animated)
 
                  self.photoVideoView?._change(pos: NSMakePoint(3, 3), animated: animated)
                  self.archivedPhoto?._change(pos: NSMakePoint(3, 3), animated: animated)
@@ -2592,7 +2592,7 @@ public class ChatListRowView: TableRowView, RevealTableView {
                      photoVideoView.layer?.cornerRadius = item.isForum ? 10 : photoVideoView.frame.height / 2
                  }
                  self.archivedPhoto?.layer?.cornerRadius = photo.radius
-                 self.photo.update(component: nil, availableSize: NSMakeSize(44, 44), transition: transition)
+                 self.photo.update(component: nil, availableSize: NSMakeSize(photo.frame.width - 6, photo.frame.height - 6), transition: transition)
              }
              
              
