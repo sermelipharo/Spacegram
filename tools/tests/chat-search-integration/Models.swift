@@ -74,10 +74,12 @@ protocol AccountContextProtocol: AnyObject {
   var window: Window { get }
   var account: Int { get }
   var isPremium: Bool { get }
+  var peerId: PeerId { get }
 }
 final class FixtureContext: AccountContextProtocol {
   let window: Window
   var account = 0
+  var peerId = PeerId(value: 99)
   var isPremium = true
   init(_ w: Window) { window = w }
 }
@@ -115,7 +117,7 @@ final class ChatInteraction: InterfaceObserver {
 struct ChatSearchInteractions {
   let searchRequest:
     (String, PeerId?, SearchMessagesState?, [EmojiTag]) -> Signal<
-      ([Message], SearchMessagesState?), NoError
+      ([Message], SearchMessagesState?, Int32), NoError
     >
   let jump: (Message) -> Void
   let cancel: () -> Void
@@ -143,7 +145,7 @@ final class ChatSearchTagsView: View {
 }
 func chatContextQueryForSearchMention(
   chatLocations: [ChatLocation], _ query: ChatPresentationInputQuery,
-  currentQuery: ChatPresentationInputQuery?, context: any AccountContextProtocol
+  currentQuery: ChatPresentationInputQuery?, context: any AccountContextProtocol, includeSelf: Bool = false
 ) -> (
   ChatPresentationInputQuery,
   Signal<(ChatPresentationInputQueryResult?) -> ChatPresentationInputQueryResult?, NoError>

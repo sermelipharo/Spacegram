@@ -11,7 +11,9 @@ fixtures = Path(__file__).resolve().parent
 source_root = root / "packages/ChatUI/Sources/ChatUI"
 parser = argparse.ArgumentParser()
 parser.add_argument("--scratch-path", type=Path)
+parser.add_argument("--dependency-root", type=Path, default=root)
 args = parser.parse_args()
+dependency_root = args.dependency_root.resolve()
 
 
 def source(name):
@@ -33,7 +35,7 @@ bubbles = source("ChatHeaderBubblesView")
 controller = source("ChatController")
 search = source("ChatSearchHeader")
 search = search[search.index("class ChatSearchHeader :"):]
-tone = (root / "submodules/telegram-ios/submodules/TelegramCore/Sources/TelegramEngine/Messages/Translate.swift").read_text()
+tone = (dependency_root / "submodules/telegram-ios/submodules/TelegramCore/Sources/TelegramEngine/Messages/Translate.swift").read_text()
 frame_start = controller.index("            let headerFrame = inlineFrame?.offsetBy")
 parts = {
     "__RESTART_TOPIC__": block(header, "private final class ChatRestartTopic :"),
@@ -44,6 +46,7 @@ parts = {
     "__FRAME_EXPRESSION__": controller[frame_start:controller.index("\n            header.measure(", frame_start)],
     "__TRANSLATION_MENU__": "\n".join(line for line in source("ChatTranslationMenu").splitlines() if not line.startswith("import ")),
     "__TRANSLATION_TONE__": block(tone, "public enum TranslationTone:"),
+    "__SEARCH_AUX__": "\n".join(block(search, marker) for marker in ["private var searchAccessoryWidth:", "private var visibleCountWidth:"]),
     "__SEARCH_WIDTH__": block(search, "private var searchWidth:"),
     "__SEARCH_LAYOUT__": block(search, "func updateLayout(size:"),
     "__ACTIVITY_UPDATE__": block(bubbles, "private func updateInputActivities()"),
@@ -52,7 +55,7 @@ parts = {
 }
 image_paths = {}
 for name in ["Icon_SearchField", "Icon_SearchClear", "Icon_Quote", "Icon_Quote_Collapse", "Icon_Quote_Expand", "Icon_ChatActions", "Icon_SearchArrow", "Icon_Calendar", "Icon_Pip_Close"]:
-    imageset = root / "Telegram-Mac/Assets.xcassets" / (name + ".imageset")
+    imageset = dependency_root / "Telegram-Mac/Assets.xcassets" / (name + ".imageset")
     images = json.loads((imageset / "Contents.json").read_text())["images"]
     image = next(image for image in images if image.get("filename") and image.get("scale") == "1x")
     image_paths[name] = str(imageset / image["filename"])
@@ -60,7 +63,7 @@ parts["__IMAGE_PATHS__"] = "[" + ", ".join(json.dumps(name) + ": " + json.dumps(
 
 with tempfile.TemporaryDirectory(prefix="telegram-chat-header-") as directory:
     directory = Path(directory)
-    dependencies = ", ".join(".package(path: " + json.dumps(str(root / "packages" / name)) + ")" for name in ["TGUIKit", "Translate", "ColorPalette"])
+    dependencies = ", ".join(".package(path: " + json.dumps(str(dependency_root / "packages" / name)) + ")" for name in ["TGUIKit", "Translate", "ColorPalette"])
     (directory / "Package.swift").write_text('''// swift-tools-version:5.9
 import PackageDescription
 let package = Package(name: "ChatHeaderChecks", platforms: [.macOS(.v12)], dependencies: [DEPENDENCIES], targets: [
@@ -82,7 +85,7 @@ let package = Package(name: "ChatHeaderChecks", platforms: [.macOS(.v12)], depen
         for marker, body in parts.items():
             text = text.replace(marker, body)
         (integration_dir / name).write_text(text)
-    common = ["--package-path", str(directory), "--disable-sandbox", "--jobs", "4"]
+    common = ["--package-path", str(directory), "--disable-sandbox", "--jobs", "2"]
     if args.scratch_path:
         common += ["--scratch-path", str(args.scratch_path.resolve())]
     print("Testing exact layout source and extracted header methods with native TGUIKit controls and Translate", flush=True)

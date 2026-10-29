@@ -99,6 +99,9 @@ public final class ChatInputContainerView: FlippableView {
     public let textView: UITextView
     public let attachView: ChatInputAttachButton
 
+    /// Top-right "open in rich editor" affordance, shown when the input grows to 4+ lines (mirrors the AI
+    /// button trigger). Clicking opens the rich editor with the current input (works even for plain text).
+    /// Created lazily (only while shown).
     fileprivate var expandRichButton: ImageButton?
     public var openRichEditor: (() -> Void)?
 
@@ -208,28 +211,17 @@ public final class ChatInputContainerView: FlippableView {
         accessory.isVisibility() ? 10 + accessory.size.height : 0
     }
 
-    private var shouldShowAIEditor: Bool {
-        let presentation = chatInteraction.presentation
-        return (presentation.state == .normal || presentation.state == .editing)
-            && (presentation.interfaceState.editState?.loadingState ?? EditStateLoading.none) == EditStateLoading.none
-            && presentation.peer?.isSecretChat != true
-            && chatInteraction.mode.customChatLink == nil
-            && presentation.effectiveInput.inputText.trimmingCharacters(in: .whitespacesAndNewlines).count >= 10
-    }
-
-    fileprivate func inputRowHeight(for width: CGFloat) -> CGFloat {
-        let contentHeight = contentHeight(for: width)
-        guard shouldShowAIEditor else {
-            return contentHeight
-        }
-        return max(contentHeight, ChatInputAttachButton.expandedHeight)
+    fileprivate var richDraftSlotHeight: CGFloat {
+        let minHeight = CGFloat(textView.min_height)
+        let draftHeight = richDraftPreviewHeight - RichTextDraftPreviewView.vInset * 2
+        return max(minHeight, min(richDraftPreviewHeight, draftHeight * 2 - minHeight))
     }
 
     public func contentHeight(for width: CGFloat) -> CGFloat {
         // A rich draft stands IN PLACE of the text (it looks like the entered content), so it replaces the
         // text's base height rather than stacking above an empty field.
         if richDraftPreviewHeight > 0 {
-            return max(richDraftPreviewHeight, CGFloat(textView.min_height)) + accessoryHeight
+            return richDraftSlotHeight + accessoryHeight
         }
         let base = (chatState == .normal || chatState == .editing) ? textViewSize(width).0.height : CGFloat(textView.min_height)
         return base + accessoryHeight
@@ -283,8 +275,7 @@ public final class ChatInputContainerView: FlippableView {
                 // doesn't flash at the origin before the next layout pass.
                 let sendAsInset: CGFloat = sendAsView != nil ? 34 + 3 : 0
                 let textLeftInset: CGFloat = 12 + sendAsInset
-                let slot = max(richDraftPreviewHeight, CGFloat(textView.min_height))
-                let previewY = accessoryHeight + (slot - richDraftPreviewHeight) / 2
+                let previewY = accessoryHeight + (richDraftSlotHeight - richDraftPreviewHeight) / 2
                 current.frame = NSMakeRect(textLeftInset, previewY, width, richDraftPreviewHeight)
             }
         } else if let view = richDraftPreview {
@@ -355,7 +346,7 @@ public final class ChatInputContainerView: FlippableView {
         let edge: CGFloat = 12
         let gap: CGFloat = 10
 
-        transition.updateFrame(view: contentView, frame: NSMakeRect(0, contentY, size.width, inputRowHeight(for: size.width)))
+        transition.updateFrame(view: contentView, frame: NSMakeRect(0, contentY, size.width, contentHeight))
 
         var leftInset: CGFloat = 0
         if let view = botMenuView, let botMenu = chatInteraction.presentation.botMenu {
@@ -376,7 +367,12 @@ public final class ChatInputContainerView: FlippableView {
         let (textSize, textHeight) = textViewSize(size.width)
         let accessoryHeight = self.accessoryHeight
 
-        let showAi = shouldShowAIEditor
+        // The AI (rephrase) button lives in the attach view and appears once the input has grown to 4+
+        // lines; the attach view then expands into a vertical pill to hold it (glass ghost follows).
+        let showAi = (chatInteraction.presentation.state == .normal || chatInteraction.presentation.state == .editing)
+            && (chatInteraction.presentation.interfaceState.editState?.loadingState ?? EditStateLoading.none) == EditStateLoading.none
+            && chatInteraction.presentation.peer?.isSecretChat != true
+            && textView.numberOfLines(for: textSize.width) >= 4
 
         let sendAsInset: CGFloat = sendAsView != nil ? 34 + 3 : 0
         let sendSize = sendButton.desiredSize
@@ -499,8 +495,7 @@ public final class ChatInputContainerView: FlippableView {
                 }
             }
             textView.isHidden = true
-            let slot = max(richDraftPreviewHeight, CGFloat(textView.min_height))
-            let previewY = textY + (slot - richDraftPreviewHeight) / 2
+            let previewY = textY + (richDraftSlotHeight - richDraftPreviewHeight) / 2
             transition.updateFrame(view: preview, frame: NSMakeRect(textLeftInset, previewY, textSize.width, richDraftPreviewHeight))
         } else {
             textView.isHidden = false
@@ -508,10 +503,7 @@ public final class ChatInputContainerView: FlippableView {
             textView.updateLayout(size: textRect.size, textHeight: textHeight, transition: transition)
         }
 
-        let showExpand = ((chatInteraction.presentation.state == .normal
-            && chatInteraction.presentation.peer?.isSecretChat != true
-            && textView.numberOfLines(for: textSize.width) >= 4) || richDraftPreview != nil)
-            && chatInteraction.interactionContext.appConfiguration.isRichTextEditorEnabled
+        let showExpand = ((showAi && chatInteraction.presentation.state == .normal) || richDraftPreview != nil) && chatInteraction.interactionContext.appConfiguration.isRichTextEditorEnabled
         if showExpand {
             let current: ImageButton
             var isNew = false
@@ -531,7 +523,14 @@ public final class ChatInputContainerView: FlippableView {
             }
             let bs = current.frame.size
             let sendColumnMidX = containerWidth - ChatInputSendButton.fieldInset - sendWidth / 2
-            let frame = NSMakeRect(sendColumnMidX - bs.width / 2, accessoryHeight + 8, bs.width, bs.height)
+            let stackedY = accessoryHeight + 8
+            let frame: NSRect
+            if richDraftPreview != nil, sendButton.isInField, stackedY + bs.height > contentHeight - sendSize.height {
+                let slot = actionsView.entertaiments.frame.size
+                frame = NSMakeRect(fieldContentWidth - (slot.width + bs.width) / 2, contentHeight - (slot.height + bs.height) / 2, bs.width, bs.height)
+            } else {
+                frame = NSMakeRect(sendColumnMidX - bs.width / 2, stackedY, bs.width, bs.height)
+            }
             if isNew {
                 current.frame = frame
             } else {
@@ -1018,7 +1017,7 @@ public class ChatInputView: View, Notifable {
     public static let inputBottomInset: CGFloat = 12
 
     public func height(for width: CGFloat) -> CGFloat {
-        let contentHeight:CGFloat = container.inputRowHeight(for: width)
+        let contentHeight:CGFloat = contentHeight(for: width)
         var sumHeight:CGFloat = contentHeight + ChatInputView.inputBottomInset
         if let markup = replyMarkupModel  {
             bottomHeight = min(
@@ -1248,6 +1247,10 @@ public class ChatInputView: View, Notifable {
             if value.effectiveInput != oldValue.effectiveInput || oldValue.state != value.state || textPermissionChanged {
                 updateInput(value, prevState: oldValue, animated: animated)
             }
+            if value.sendPaidMessageStars != oldValue.sendPaidMessageStars {
+                updatePlaceholder()
+            }
+
             updateAttachments(value,animated)
             
             var urlPreviewChanged:Bool

@@ -19,6 +19,8 @@ final class NativeSearchFixture: View {
     let from = ImageButton()
     let calendar = ImageButton()
     let cancel = ImageButton()
+    let countContainer = View()
+    var countWidth: CGFloat = 0
     let inputContextHelper = InputContextFixture()
     var tagsView: View?
 
@@ -33,6 +35,8 @@ final class NativeSearchFixture: View {
     }
 
     required init?(coder: NSCoder) { fatalError() }
+
+    __SEARCH_AUX__
 
     __SEARCH_WIDTH__
 

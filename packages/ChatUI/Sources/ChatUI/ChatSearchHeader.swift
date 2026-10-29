@@ -1269,7 +1269,7 @@ class ChatSearchHeader : View, Notifable, ChatHeaderProtocol {
         perform()
     }
     
-    private var searchWidth: CGFloat {
+    private var searchAccessoryWidth: CGFloat {
         let gap: CGFloat = 8
         var rightSide: CGFloat = gap + cancel.frame.width
         if !calendar.isHidden {
@@ -1280,10 +1280,17 @@ class ChatSearchHeader : View, Notifable, ChatHeaderProtocol {
         }
         rightSide += gap + next.frame.width
         rightSide += gap + prev.frame.width
-        if countWidth > 0 {
-            rightSide += gap + countWidth
-        }
-        return max(0, frame.width - gap - rightSide - gap)
+        return rightSide
+    }
+
+    private var visibleCountWidth: CGFloat {
+        let available = frame.width - 16 - searchAccessoryWidth
+        return countWidth > 0 && available - countWidth - 8 >= 160 ? countWidth : 0
+    }
+
+    private var searchWidth: CGFloat {
+        let countSpace = visibleCountWidth > 0 ? visibleCountWidth + 8 : 0
+        return max(0, frame.width - 16 - searchAccessoryWidth - countSpace)
     }
 
     private func countLayout(_ string: String) -> TextViewLayout {
@@ -1344,6 +1351,8 @@ class ChatSearchHeader : View, Notifable, ChatHeaderProtocol {
         transition.updateFrame(view: prev, frame: prev.centerFrameY(x: searchView.frame.maxX + gap))
 
         let countHeight: CGFloat = 20
+        let countWidth = visibleCountWidth
+        countContainer.isHidden = countWidth == 0
         let countFrame = NSMakeRect(prev.frame.maxX + gap, floor((40 - countHeight) / 2), countWidth, countHeight)
         transition.updateFrame(view: countContainer, frame: countFrame)
 

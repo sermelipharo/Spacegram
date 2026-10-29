@@ -39,7 +39,7 @@ for width: CGFloat in [1100, 800, 650, 520, 350, 900] {
     controller.header.state.main = .pinned(1)
     check(controller.headerFrame() == pinned, "closing search did not restore pinned slot")
 }
-for action: HeaderState.Value in [.restartTopic, .shareInfo, .pendingRequests, .requestChat, .setBotPhoto] {
+for action: HeaderState.Value in [.restartTopic] {
     controller.header.state = HeaderState(main: action)
     for width: CGFloat in [1100, 350, 800, 350, 1100] {
         controller.frame.size.width = width
@@ -58,7 +58,7 @@ for action: HeaderState.Value in [.restartTopic, .shareInfo, .pendingRequests, .
     controller.header.state = HeaderState(main: action, monoforumHorizontal: true)
     check(!controller.header.state.canDisplayInline, "utility action overlaps forum controls")
 }
-for action: HeaderState.Value in [.report(0, nil), .addContact, .promo, .removePaidMessages] {
+for action: HeaderState.Value in [.report(0, nil), .addContact, .promo, .removePaidMessages, .shareInfo, .pendingRequests, .requestChat, .setBotPhoto] {
     check(!HeaderState(main: action).canDisplayInline, "multi-action or explanatory banner was compacted")
 }
 controller.frame.size.width = 1100

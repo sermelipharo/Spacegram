@@ -268,7 +268,7 @@ struct ChatHeaderState : Identifiable, Equatable {
             return false
         }
         switch main {
-        case .pinned, .restartTopic, .shareInfo, .pendingRequests, .requestChat, .setBotPhoto, .search(_, _, _, nil, _, _):
+        case .pinned, .restartTopic, .search(_, _, _, nil, _, _):
             return true
         default:
             return false
@@ -424,7 +424,7 @@ class ChatHeaderController {
         let layoutSlot: (View?, Bool) -> Bool = { view, inited in
             guard let view = view else { return inited }
             let layoutTransition: ContainedViewLayoutTransition = inited ? transition : .immediate
-            let height = view === self.primaryView && self._headerState.canDisplayInline ? size.height : view.frame.height
+            let height = view === self.primaryView ? (self._headerState.canDisplayInline ? size.height : self._headerState.primaryHeight) : view.frame.height
             layoutTransition.updateFrame(view: view, frame: NSMakeRect(0, view.frame.minY, size.width, height))
             (view as? ChatHeaderProtocol)?.updateLayout(size: NSMakeSize(size.width, height), transition: layoutTransition)
             return true

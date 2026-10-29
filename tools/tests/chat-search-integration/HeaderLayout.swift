@@ -15,7 +15,7 @@ final class HeaderSlotFixture: View, ChatHeaderProtocol {
 final class HeaderLayoutFixture {
   let currentView = View(frame: NSMakeRect(12, 62, 976, 40))
   var hasLayout = false
-  struct SlotState { var canDisplayInline = true }
+  struct SlotState { var canDisplayInline = true; var primaryHeight: CGFloat = 36 }
   var _headerState = SlotState()
   __SLOT_FIELDS__
 
@@ -62,6 +62,10 @@ func runHeaderLayoutChecks() {
   header.currentView.addSubview(utility)
   header.updateLayout(size: NSMakeSize(600, 40), transition: .immediate)
   check(utility.frame.height == 40, "utility hit area does not fill the inline glass")
+  header._headerState.canDisplayInline = false
+  header.updateLayout(size: NSMakeSize(600, 76), transition: .immediate)
+  check(utility.frame.height == 36, "primary slot retained its stretched height when another bar appeared")
+  header._headerState.canDisplayInline = true
   header.updateLayout(size: NSMakeSize(320, 36), transition: .immediate)
   check(utility.frame.height == 36, "utility kept the inline height in its fallback row")
   header._headerState.canDisplayInline = false
@@ -73,6 +77,7 @@ func runHeaderLayoutChecks() {
 }
 
 final class HeaderRemovalFixture {
+  var previousPrimary: View? = search
   var currentView: View? = View(frame: NSMakeRect(280, 12, 598, 40))
   var hasLayout = true
   var glassEffect: LiquidGlassView?
@@ -117,6 +122,7 @@ func runHeaderRemovalChecks() {
   fallback.remove(animated: true, mergeGlassOnRemoval: false)
   check(fallbackGhost.effectView.superview == nil, "Header below the title kept an unwanted glass surface")
   drain(0.3)
+  check(fallbackGhost.effectView.superview == nil, "Standalone search retained its native glass after fading")
   check(wrapper.ghosts.isEmpty, "Header fallback removal leaked its glass")
   wrapper.removeFromSuperview()
 }
@@ -151,4 +157,55 @@ func runAnimatedGlassCornerChecks() {
   check(radius(standalone) == 5, "animated standalone glass must clamp the new radius")
   wrapper.removeFromSuperview()
   standalone.removeFromSuperview()
+}
+
+func runFlippedGlassHostChecks() {
+  let transition = ContainedViewLayoutTransition.animated(duration: 0.2, curve: .easeOut)
+  let wrapper = GlassContainerView(frame: NSMakeRect(0, 0, 1000, 137), flipped: true)
+  root.addSubview(wrapper)
+  wrapper.updateLayout(size: wrapper.frame.size, transition: .immediate)
+  let header = HeaderRemovalFixture(wrapper)
+  header.currentView!.frame = NSMakeRect(12, 62, 976, 75)
+  root.addSubview(header.currentView!)
+  let fadingContent = header.currentView!
+  let field = ChatSearchView(frame: NSMakeRect(8, 5, 600, 30))
+  fadingContent.addSubview(field)
+  let outgoing = header.glassEffect!
+  wrapper.setGhostFrame(outgoing, frame: header.currentView!.frame, transition: .immediate)
+  header.remove(animated: true, mergeGlassOnRemoval: false)
+  wrapper.updateLayout(size: NSMakeSize(1000, 62), transition: transition)
+  check(wrapper.frame.height == 137, "Header glass host collapsed while search text was fading")
+  check(wrapper.glassContainer.frame.height == 137, "Header native glass host clipped the outgoing row")
+  check(wrapper.glassContent.frame.height == 137, "Header glass content clipped the outgoing row")
+  drain(0.08)
+  check(wrapper.glassContainer.frame.height == 137, "Header glass host shrank before the fade finished")
+  check((fadingContent.layer?.presentation()?.opacity ?? 0) > 0.35, "Header search input background disappeared before the native glass exit completed")
+  check(field.backgroundColor != .clear, "Standalone fade fixture does not exercise the input background")
+  let reopened = LiquidGlassView(frame: NSMakeRect(12, 62, 976, 75), cornerRadius: 20)
+  wrapper.addGhost(reopened)
+  wrapper.updateLayout(size: NSMakeSize(1000, 160), transition: .immediate)
+  drain(0.25)
+  check(wrapper.frame.height == 160, "Header deferred shrink clipped a reopened search")
+  check(wrapper.ghosts.contains { $0 === reopened }, "Header deferred shrink lost the reopened glass")
+  wrapper.removeGhost(reopened)
+  wrapper.updateLayout(size: NSMakeSize(1000, 62), transition: .immediate)
+  check(wrapper.glassContainer.frame.height == 62, "Header immediate resize retained obsolete height")
+  wrapper.removeFromSuperview()
+
+  let closing = GlassContainerView(frame: NSMakeRect(0, 0, 1000, 137), flipped: true)
+  root.addSubview(closing)
+  closing.updateLayout(size: closing.frame.size, transition: .immediate)
+  let finalHeader = HeaderRemovalFixture(closing)
+  finalHeader.currentView!.frame = NSMakeRect(12, 62, 976, 75)
+  root.addSubview(finalHeader.currentView!)
+  closing.setGhostFrame(finalHeader.glassEffect!, frame: finalHeader.currentView!.frame, transition: .immediate)
+  finalHeader.remove(animated: true, mergeGlassOnRemoval: false)
+  closing.updateLayout(size: NSMakeSize(1000, 62), transition: transition)
+  drain(0.3)
+  check(closing.glassContainer.frame.height == 62, "Header glass host did not release retained height")
+  check(closing.glassContent.frame.height == 62, "Header glass content retained obsolete bounds")
+  check(closing.ghosts.isEmpty, "Header glass host retained a removed search")
+  closing.updateLayout(size: NSMakeSize(1000, 40), transition: transition)
+  check(closing.glassContainer.frame.height == 40, "Header glass host delayed a resize without outgoing glass")
+  closing.removeFromSuperview()
 }

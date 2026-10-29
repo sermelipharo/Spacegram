@@ -46,6 +46,7 @@ final class ContextController {
   for message in messages { _ = genericView.tableView.addItem(item:ResultRowItem(message,width:_frameRect.width,action:{ [weak self] in self?.selected?(message)})) }
   layout(animated)
  }
+ var onSearchMessageSelected:((Message)->Void)?
  var selected:((Message)->Void)?
  __CONTEXT_LAYOUT__
 }
@@ -62,7 +63,7 @@ final class InputContextHelper {
  var getHeight:(()->CGFloat)?
  var onDisappear:(()->Void)?
  var previosEntries=Atomic<[Message]?>(value:nil)
- init(chatInteraction:ChatInteraction,highlightInsteadOfSelect:Bool){self.chatInteraction=chatInteraction;controller.selected={ [weak self] message in self?.chatInteraction.focusMessageId(nil,.init(messageId:message.id),nil) }}
+ init(chatInteraction:ChatInteraction,highlightInsteadOfSelect:Bool){self.chatInteraction=chatInteraction;controller.selected={ [weak self] message in self?.controller.onSearchMessageSelected?(message);self?.chatInteraction.focusMessageId(nil,.init(messageId:message.id),nil) }}
  __LAYOUT_CONTAINER__
  __HELPER_LAYOUT__
  func context(with result:ChatPresentationInputQueryResult?,for parent:NSView,relativeView anchor:NSView,position:InputContextPosition,selectIndex:Int?,animated:Bool,inset:CGFloat) {
@@ -73,7 +74,7 @@ final class InputContextHelper {
   }
   if case let .searchMessages(messages,_,_) = result {
    results=messages.0
-   controller.selected={ [weak self] message in self?.chatInteraction.focusMessageId(nil,.init(messageId:message.id),nil) }
+   controller.selected={ [weak self] message in self?.controller.onSearchMessageSelected?(message);self?.chatInteraction.focusMessageId(nil,.init(messageId:message.id),nil) }
   } else if case let .mentions(peers) = result {
    results=peers.map {Message(id:.init(value:$0.id.value),text:$0.compactDisplayTitle)}
    controller.selected={ [weak self] message in if let peer=peers.first(where:{$0.id.value==message.id.value}) {self?.chatInteraction.movePeerToInput(peer)} }

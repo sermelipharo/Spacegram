@@ -1354,10 +1354,25 @@ public class ChatControllerView : View, ChatInputDelegate {
         } else {
             value = .none
         }
+        var translate: ChatPresentationInterfaceState.TranslateState?
+        if interfaceState.peer?.restrictionText(interfaceState.contentSettings) == nil {
+            if let translateState = interfaceState.translateState, translateState.canTranslate {
+                if case .search = value {
+                    translate = nil
+                } else {
+                    translate = translateState
+                }
+            } else {
+                translate = nil
+            }
+        } else {
+            translate = nil
+        }
+
         let botAd: Message? = (interfaceState.historyCount ?? 0) >= 2 ? interfaceState.adMessage : nil
         
              
-        let state: ChatHeaderState = .init(main: value, voiceChat: voiceChat, botManager: interfaceState.chatMode == .preview ? nil : interfaceState.connectedBot, botAd: botAd.flatMap { .init(message: $0, chatInteraction: chatInteraction) }, monoforumHorizontal: interfaceState.monoforumState == .horizontal ? monoforumHorizontalData : nil)
+        let state: ChatHeaderState = .init(main: value, voiceChat: voiceChat, translate: translate, botManager: interfaceState.chatMode == .preview ? nil : interfaceState.connectedBot, botAd: botAd.flatMap { .init(message: $0, chatInteraction: chatInteraction) }, monoforumHorizontal: interfaceState.monoforumState == .horizontal ? monoforumHorizontalData : nil)
 
         state.measure(frame.width - (interfaceState.monoforumState == .vertical ? 92 : 0) - 24)
 
@@ -1693,7 +1708,11 @@ public class ChatControllerView : View, ChatInputDelegate {
         return frame.focusX(size, y: y)
     }
 
-    func showToaster(text: NSAttributedString, action: (() -> Void)? = nil, timeout: Double, animated: Bool) {
+    var presentationTextColor: NSColor {
+        return presentation.colors.text
+    }
+
+    func showToaster(text: NSAttributedString, animation: LocalAnimatedSticker? = nil, context: (any AccountContextProtocol)? = nil, action: (() -> Void)? = nil, timeout: Double, animated: Bool) {
         // Tear down any in-flight toaster before installing the new one —
         // `dismissImmediately` only kills the timer, so we also have to
         // remove the view from the hierarchy or it sticks around forever.
@@ -1705,7 +1724,7 @@ public class ChatControllerView : View, ChatInputDelegate {
 
         let view = ChatToasterView(frame: .zero)
         let maxWidth = max(80, frame.width - 24)
-        view.update(text: text, maxWidth: maxWidth)
+        view.update(text: text, animation: animation, context: context, maxWidth: maxWidth)
         let size = view.contentSize(maxWidth: maxWidth)
         let y = ChatHeaderBubblesView.totalHeight + headerHeight + 8
         view.frame = frame.focusX(size, y: y)
@@ -1751,6 +1770,10 @@ public class ChatControllerView : View, ChatInputDelegate {
 final class ChatToasterView: Control {
     private let glass: LiquidGlassView
     private let textView = TextView()
+    private let animationView: MediaAnimatedStickerView = MediaAnimatedStickerView(frame: NSMakeRect(0, 0, 26, 26))
+    private var hasAnimation: Bool = false
+    private let animationSize: CGFloat = 26
+    private let animationSpacing: CGFloat = 8
     /// Auto-dismiss timer owned by the view itself, so the view manages its
     /// own lifecycle. Previously a separate `ChatToaster` model held both a
     /// strong reference to the view AND the disposable, which made the
@@ -1766,6 +1789,9 @@ final class ChatToasterView: Control {
         super.init(frame: frameRect)
         addSubview(glass)
         addSubview(textView)
+        addSubview(animationView)
+        animationView.userInteractionEnabled = false
+        animationView.isHidden = true
         textView.isSelectable = false
         textView.userInteractionEnabled = false
         textView.disableBackgroundDrawing = true
@@ -1780,9 +1806,22 @@ final class ChatToasterView: Control {
         dismissDisposable.dispose()
     }
 
-    func update(text: NSAttributedString, maxWidth: CGFloat) {
+    func update(text: NSAttributedString, animation: LocalAnimatedSticker? = nil, context: (any AccountContextProtocol)? = nil, maxWidth: CGFloat) {
+        let iconWidth: CGFloat
+        if let animation, let context {
+            hasAnimation = true
+            animationView.isHidden = false
+            let color = (text.length > 0 ? text.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? NSColor : nil) ?? NSColor.white
+            let parameters = ChatAnimatedStickerMediaLayoutParameters(playPolicy: .once, alwaysAccept: true, cache: .temporaryLZ4(.thumb), hidePlayer: false, media: animation.file, colors: [.init(keyPath: "", color: color)], shimmer: false)
+            animationView.update(with: animation.file, size: NSMakeSize(animationSize, animationSize), context: context, table: nil, parameters: parameters, animated: false)
+            iconWidth = animationSize + animationSpacing
+        } else {
+            hasAnimation = false
+            animationView.isHidden = true
+            iconWidth = 0
+        }
         let layout = TextViewLayout(text, maximumNumberOfLines: 3, truncationType: .end, alignment: .center)
-        layout.measure(width: max(40, maxWidth - horizontalPadding * 2))
+        layout.measure(width: max(40, maxWidth - horizontalPadding * 2 - iconWidth))
         textView.update(layout)
     }
 
@@ -1802,7 +1841,8 @@ final class ChatToasterView: Control {
         guard let layout = textView.textLayout else {
             return NSMakeSize(120, minHeight)
         }
-        let width = min(maxWidth, layout.layoutSize.width + horizontalPadding * 2)
+        let iconWidth: CGFloat = hasAnimation ? animationSize + animationSpacing : 0
+        let width = min(maxWidth, layout.layoutSize.width + iconWidth + horizontalPadding * 2)
         let height = max(minHeight, layout.layoutSize.height + verticalPadding * 2)
         return NSMakeSize(width, height)
     }
@@ -1811,7 +1851,15 @@ final class ChatToasterView: Control {
         super.layout()
         glass.frame = bounds
         glass.cornerRadius = bounds.height / 2
-        textView.center()
+        if hasAnimation {
+            let iconWidth = animationSize + animationSpacing
+            let contentWidth = iconWidth + textView.frame.width
+            let startX = floor((bounds.width - contentWidth) / 2)
+            animationView.setFrameOrigin(NSMakePoint(startX, floor((bounds.height - animationSize) / 2)))
+            textView.setFrameOrigin(NSMakePoint(startX + iconWidth, floor((bounds.height - textView.frame.height) / 2)))
+        } else {
+            textView.center()
+        }
     }
 }
 
@@ -3864,13 +3912,8 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
                         let countViewKey: PostboxViewKey = .historyTagSummaryView(tag: MessageTags(), peerId: peerId, threadId: savedMessagesPeerId.toInt64(), namespace: Namespaces.Message.Cloud, customTag: nil)
                         answersCount = context.account.postbox.combinedView(keys: [basicPeerKey, countViewKey])
                         |> map { views -> Int32? in
-                            
-                            var messageCount = 0
-                            if let summaryView = views.views[countViewKey] as? MessageHistoryTagSummaryView, let count = summaryView.count {
-                                messageCount += Int(count)
-                            }
-                            
-                            return Int32(messageCount)
+                            let count = (views.views[countViewKey] as? MessageHistoryTagSummaryView)?.count
+                            return mode.isSavedMessagesThread ? count : count ?? 0
                         }
 
                     } else if isThread {
@@ -4390,6 +4433,7 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
                             
                             verifyAlert(for: chatInteraction.interactionContext.window, header: strings().chatPayStarsConfirmTitle, information: strings().chatPayStarsConfirmText(peer.displayTitle, amount, amount, messageCountText), ok: strings().chatPayStarsConfirmPayOther(messagesCount), option: strings().chatPayStarsConfirmCheckbox, optionIsSelected: false, successHandler: { [weak chatInteraction] result in
                                 guard let chatInteraction = chatInteraction else { return }
+                                guard chatPaidMessagePriceIsCurrent(chatInteraction, payStars) else { return }
                                 if starsState.balance.value > starsPrice {
                                     chatInteraction.update({ current in
                                         return current
@@ -4397,7 +4441,7 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
                                     })
                                     invoke()
                                     if result == .thrid {
-                                        FastSettings.toggleCofirmPaid(peer.id, price: starsPrice)
+                                        FastSettings.toggleCofirmPaid(peer.id, price: Int(payStars.value))
                                     }
                                 } else {
                                     FeatureNavigationHooks.shared.showStarsPurchaseWithContext(context, context.window, .stars, nil, Int64(starsPrice))
@@ -4530,7 +4574,9 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
                         guard let strongSelf, strongSelf.messageFocusRequestId == requestId,
                               strongSelf.chatLocation == chatLocation, strongSelf.locationValue?.tag == locationTag else { return }
                         if let messageId = messageId {
-                            strongSelf.chatInteraction.focusMessageId(nil, .init(messageId: messageId, string: nil), .top(id: 0, innerId: nil, animated: true, focus: .init(focus: false), inset: 30))
+                            let topInset = strongSelf.genericView.tableView.contentInsets.top
+                            let inset: CGFloat = topInset + 30 + 10
+                            strongSelf.chatInteraction.focusMessageId(nil, .init(messageId: messageId, string: nil), .top(id: 0, innerId: nil, animated: true, focus: .init(focus: false), inset: inset))
                         }
                     }))
                 case .scheduled:
@@ -4550,7 +4596,9 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
                         return true
                     })
                     if let targetItem {
-                        strongSelf.genericView.tableView.scroll(to: .top(id: targetItem.stableId, innerId: nil, animated: true, focus: .init(focus: false), inset: 30))
+                        let topInset = strongSelf.genericView.tableView.contentInsets.top
+                        let inset: CGFloat = topInset + 30 + 10
+                        strongSelf.genericView.tableView.scroll(to: .top(id: targetItem.stableId, innerId: nil, animated: true, focus: .init(focus: false), inset: inset))
                     }
                 case .pinned:
                     break
@@ -4589,15 +4637,18 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
                 return
             }
 
+            let urlPreview = urlPreviewMatchesInput(presentation, context: context) ? presentation.urlPreview : nil
+            let disableUrlPreview = presentation.interfaceState.composeDisableUrlPreview != nil && (urlPreview == nil || urlPreview?.0 == presentation.interfaceState.composeDisableUrlPreview)
+
             self.urlPreviewQueryState?.1.dispose()
             
             
             let webpagePreviewAttribute: WebpagePreviewMessageAttribute?
             
             let media: RequestEditMessageMedia
-            if let webpreview = presentation.urlPreview?.1 {
+            if let webpreview = urlPreview?.1 {
                 webpagePreviewAttribute = .init(leadingPreview: !presentation.interfaceState.linkBelowMessage, forceLargeMedia: presentation.interfaceState.largeMedia, isManuallyAdded: false, isSafe: true)
-                if presentation.urlPreview?.0 == presentation.interfaceState.composeDisableUrlPreview {
+                if urlPreview?.0 == presentation.interfaceState.composeDisableUrlPreview {
                     media = .keep
                 } else {
                     media = .update(.webPage(webPage: WebpageReference(webpreview), media: webpreview))
@@ -4612,7 +4663,7 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
             
             let editSubmissionId = chatInteraction.beginMediaEditSubmission()
             if atDate == nil {
-                self.context.account.pendingUpdateMessageManager.add(messageId: state.message.id, text: inputState.inputText, media: media, entities: TextEntitiesMessageAttribute(entities: inputState.messageTextEntities(extractDates: state.message.id.peerId.namespace == Namespaces.Peer.CloudUser)), richText: nil, inlineStickers: inputState.inlineMedia, webpagePreviewAttribute: webpagePreviewAttribute, invertMediaAttribute: invertMediaAttribute, disableUrlPreview: presentation.interfaceState.composeDisableUrlPreview != nil)
+                self.context.account.pendingUpdateMessageManager.add(messageId: state.message.id, text: inputState.inputText, media: media, entities: TextEntitiesMessageAttribute(entities: inputState.messageTextEntities(extractDates: state.message.id.peerId.namespace == Namespaces.Peer.CloudUser)), richText: nil, inlineStickers: inputState.inlineMedia, webpagePreviewAttribute: webpagePreviewAttribute, invertMediaAttribute: invertMediaAttribute, disableUrlPreview: disableUrlPreview)
                 
                 self.chatInteraction.beginEditingMessage(nil)
                 self.chatInteraction.update({
@@ -4634,7 +4685,7 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
                 }
                 
                 
-                self.chatInteraction.editDisposable.set((context.engine.messages.requestEditMessage(messageId: state.message.id, text: inputState.inputText, media: media, entities: TextEntitiesMessageAttribute(entities: inputState.messageTextEntities()), richText: nil, inlineStickers: inputState.inlineMedia, webpagePreviewAttribute: webpagePreviewAttribute, invertMediaAttribute: invertMediaAttribute, disableUrlPreview: presentation.interfaceState.composeDisableUrlPreview != nil, scheduleInfoAttribute: scheduleAttr) |> deliverOnMainQueue).start(next: { [weak self] progress in
+                self.chatInteraction.editDisposable.set((context.engine.messages.requestEditMessage(messageId: state.message.id, text: inputState.inputText, media: media, entities: TextEntitiesMessageAttribute(entities: inputState.messageTextEntities()), richText: nil, inlineStickers: inputState.inlineMedia, webpagePreviewAttribute: webpagePreviewAttribute, invertMediaAttribute: invertMediaAttribute, disableUrlPreview: disableUrlPreview, scheduleInfoAttribute: scheduleAttr) |> deliverOnMainQueue).start(next: { [weak self] progress in
                     guard let self, self.chatInteraction.isCurrentMediaEditSubmission(editSubmissionId), self.chatInteraction.presentation.interfaceState.editState?.message.id == state.message.id else { return }
                     switch progress {
                     case let .progress(progress):
@@ -4734,25 +4785,10 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
                     if let date {
                         attributes.append(OutgoingScheduleInfoMessageAttribute(scheduleTime: Int32(min(date.timeIntervalSince1970, Double(scheduleWhenOnlineTimestamp))), repeatPeriod: repeatPeriod))
                     }
-                    let message: EnqueueMessage = .message(text: "", attributes: attributes, inlineStickers: [:],
-                                                           mediaReference: nil, threadId: ci.chatLocation.threadId,
-                                                           replyToMessageId: richTextThreadReplySubject(chatInteraction: ci), replyToStoryId: nil, localGroupingKey: nil,
-                                                           correlationId: nil, bubbleUpEmojiOrStickersets: [])
-                    if let customChatContents = ci.mode.customChatContents {
-                        _ = (customChatContents.enqueueMessages(messages: [message])).start()
-                    } else {
-                        _ = (enqueueMessages(account: context.account, peerId: ci.peerId, messages: [message])).start(next: { ids in
-                        }, completed: {
-                        })
-                    }
+                    richTextEnqueue(chatInteraction: ci, text: "", attributes: attributes)
                 }
                 if let atDate {
                     applyRichDraft(atDate.date, atDate.repeatPeriod)
-                    if strongSelf.mode != .scheduled {
-                        delay(0.1, closure: { [weak strongSelf] in
-                            strongSelf?.openScheduledChat()
-                        })
-                    }
                 } else if strongSelf.mode == .scheduled, let peer = ci.peer {
                     DispatchQueue.main.async {
                         showModal(with: chatDateSelector(context: context, mode: .schedule(peer.id), selectedAt: { date, repeatPeriod in
@@ -4891,14 +4927,14 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
                                     let messageCountText = strings().chatPayStarsConfirmMessagesOther(messagesCount)
                                     
                                     verifyChatSendPayment(for: chatInteraction.interactionContext.window, header: strings().chatPayStarsConfirmTitle, information: strings().chatPayStarsConfirmText(peer.displayTitle, amount, amount, messageCountText), ok: strings().chatPayStarsConfirmPayOther(messagesCount), option: strings().chatPayStarsConfirmCheckbox, successHandler: { result in
-                                        
+                                        guard chatPaidMessagePriceIsCurrent(chatInteraction, payStars) else { return }
                                         if starsState.balance.value > starsPrice {
                                             chatInteraction.update({ current in
                                                 return current
                                                     .withUpdatedAlwaysPaidMessage(result == .thrid)
                                             })
                                             if result == .thrid {
-                                                FastSettings.toggleCofirmPaid(peer.id, price: starsPrice)
+                                                FastSettings.toggleCofirmPaid(peer.id, price: Int(payStars.value))
                                             }
                                             invoke()
                                         } else {
@@ -5708,14 +5744,14 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
                         let messageCountText = strings().chatPayStarsConfirmMessagesOther(messagesCount)
                         
                         verifyChatSendPayment(for: chatInteraction.interactionContext.window, header: strings().chatPayStarsConfirmTitle, information: strings().chatPayStarsConfirmText(peer.displayTitle, amount, amount, messageCountText), ok: strings().chatPayStarsConfirmPayOther(messagesCount), option: strings().chatPayStarsConfirmCheckbox, successHandler: { result in
-                            
+                            guard chatPaidMessagePriceIsCurrent(chatInteraction, payStars) else { return }
                             if starsState.balance.value > starsPrice {
                                 chatInteraction.update({ current in
                                     return current
                                         .withUpdatedAlwaysPaidMessage(result == .thrid)
                                 })
                                 if result == .thrid {
-                                    FastSettings.toggleCofirmPaid(peer.id, price: starsPrice)
+                                    FastSettings.toggleCofirmPaid(peer.id, price: Int(payStars.value))
                                 }
                                 invoke()
                             } else {
@@ -6792,13 +6828,14 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
                         var confirmationResolved = false
                         verifyAlert(for: chatInteraction.interactionContext.window, header: strings().chatPayStarsConfirmTitle, information: strings().chatPayStarsConfirmText(peer.displayTitle, amount, amount, messageCountText), ok: strings().chatPayStarsConfirmPayOther(messagesCount), option: strings().chatPayStarsConfirmCheckbox, optionIsSelected: false, successHandler: { result in
                             confirmationResolved = true
+                            guard chatPaidMessagePriceIsCurrent(chatInteraction, payStars) else { return }
                             if starsState.balance.value > starsPrice {
                                 chatInteraction.update({ current in
                                     return current
                                         .withUpdatedAlwaysPaidMessage(result == .thrid)
                                 })
                                 if result == .thrid {
-                                    FastSettings.toggleCofirmPaid(peer.id, price: starsPrice)
+                                    FastSettings.toggleCofirmPaid(peer.id, price: Int(payStars.value))
                                 }
                                 invoke()
                             } else {
@@ -7849,6 +7886,11 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
             _ = (fetchAndPreloadReplyThreadInfo(context: context, subject: .groupMessage(threadMessageId), preload: false) |> take(1) |> deliverOnMainQueue).start(next: { [weak self] result in
                 self?.navigationController?.push(ChatController(context: context, chatLocation: .thread(result.message), mode: .preview, chatLocationContextHolder: result.contextHolder))
             })
+        }
+        chatInteraction.showAnimatedToaster = { [weak self] animation, text in
+            guard let self else { return }
+            let attributed = NSAttributedString.initialize(string: text, color: self.genericView.presentationTextColor, font: .normal(.text))
+            self.genericView.showToaster(text: attributed, animation: animation, context: self.context, timeout: 3.0, animated: true)
         }
         chatInteraction.removeToaster = { [weak self] in
             self?.genericView.removeToaster(animated: true)
@@ -9173,16 +9215,18 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
                                 messageIdsWithReactions.append(message.id)
                             }
                             if message.id.namespace == Namespaces.Message.Cloud {
-                                if !message.text.isEmpty {
-                                    messagesToTranslate.append(message)
-                                } else if let _ = message.media.first as? TelegramMediaPoll {
-                                    messagesToTranslate.append(message)
-                                } else if message.attributes.contains(where: { $0 is RichTextMessageAttribute }) {
-                                    messagesToTranslate.append(message)
-                                }
-                                if let media = message.media.first as? TelegramMediaFile, media.isVoice || media.isInstantVideo {
-                                    if case .revealed(true) = state.transribe[message.id] {
-                                        messagesToTranslateTranscribe.append(message)
+                                if message.author?.id != strongSelf.context.peerId, message.effectivelyIncoming(strongSelf.context.peerId) {
+                                    if !message.text.isEmpty {
+                                        messagesToTranslate.append(message)
+                                    } else if let _ = message.media.first as? TelegramMediaPoll {
+                                        messagesToTranslate.append(message)
+                                    } else if message.attributes.contains(where: { $0 is RichTextMessageAttribute }) {
+                                        messagesToTranslate.append(message)
+                                    }
+                                    if let media = message.media.first as? TelegramMediaFile, media.isVoice || media.isInstantVideo {
+                                        if case .revealed(true) = state.transribe[message.id] {
+                                            messagesToTranslateTranscribe.append(message)
+                                        }
                                     }
                                 }
                                 if let reply = message.replyAttribute, let replyMessage = message.associatedMessages[reply.messageId] {
@@ -9247,7 +9291,7 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
                     strongSelf.updateMaxVisibleReadIncomingMessageIndex(MessageIndex(message))
                 }
                 
-                if let pinned = strongSelf.chatInteraction.presentation.pinnedMessageId, let message = pinned.message, !message.text.isEmpty {
+                if let pinned = strongSelf.chatInteraction.presentation.pinnedMessageId, let message = pinned.message, !message.text.isEmpty, message.author?.id != strongSelf.context.peerId {
                     messagesToTranslate.append(message)
                 }
                 
@@ -11322,6 +11366,9 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
             return takeTableItem?(msgId)
         })
         super.init(context)
+        if mode.isSavedMessagesThread {
+            SavedChatControllerRegistry.shared.add(self)
+        }
 
         self.bar = .init(height: 0)
         self.insets = NSEdgeInsets()
@@ -11757,7 +11804,7 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
             }
             
             if let peer = value.mainPeer, let oldPeer = oldValue.mainPeer {
-                if TelegramUtilsHooks.shared.peerIsForum(peer) && !TelegramUtilsHooks.shared.peerIsForum(oldPeer) || (oldValue.threadInfo != nil && value.threadInfo == nil && !peer.displayForumAsTabs(splitState: context.layout)), !peer.isMonoForum {
+                if TelegramUtilsHooks.shared.peerIsForum(peer) && !TelegramUtilsHooks.shared.peerIsForum(oldPeer) || (!self.mode.isSavedMessagesThread && oldValue.threadInfo != nil && value.threadInfo == nil && !peer.displayForumAsTabs(splitState: context.layout)), !peer.isMonoForum {
                     if (self.navigationController?.stackCount ?? 0) > 1 {
                         self.navigationController?.removeImmediately(self)
                     } else if self.mode == .preview {
