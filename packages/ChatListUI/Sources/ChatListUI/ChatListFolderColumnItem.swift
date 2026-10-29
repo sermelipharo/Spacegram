@@ -35,13 +35,13 @@ public final class ChatListFolderColumnItem : GeneralRowItem {
     }
 
     public override var height: CGFloat {
-        return 36
+        return 30
     }
 
     public override func makeSize(_ width: CGFloat, oldWidth: CGFloat = 0) -> Bool {
         _ = super.makeSize(width, oldWidth: oldWidth)
         countLayout?.measure(width: 24)
-        titleLayout.measure(width: width - 8 - 4)
+        titleLayout.measure(width: width - 4 - 2)
         return true
     }
 
@@ -103,7 +103,7 @@ fileprivate final class ChatListFolderColumnView: TableRowView {
 
     override func layout() {
         super.layout()
-        plate.frame = NSMakeRect(4, 1, frame.width - 8, frame.height - 2)
+        plate.frame = NSMakeRect(2, 1, frame.width - 4, frame.height - 2)
         overlay.frame = plate.bounds
         if !countView.isHidden {
             countBadge.frame = NSMakeRect(plate.frame.width - countView.frame.width - 10, 0, countView.frame.width + 8, 12)
@@ -139,7 +139,7 @@ final class ChatListFolderDock: NSView {
     private var items: [ChatListFolderColumnItem] = []
     private var rows: [ChatListFolderColumnView] = []
 
-    static let rowHeight: CGFloat = 36
+    static let rowHeight: CGFloat = 30
 
     var rowCount: Int {
         return items.count
@@ -183,7 +183,7 @@ final class ChatListFolderDock: NSView {
 
     func set(folders: [(folder: ChatListFilter, unreadCount: Int, hasUnmutedUnread: Bool)], invoke: @escaping (ChatListFilter) -> Void) {
         rows.forEach { $0.removeFromSuperview() }
-        let size = NSMakeSize(max(bounds.width, 84), ChatListFolderDock.rowHeight)
+        let size = NSMakeSize(max(bounds.width, 66), ChatListFolderDock.rowHeight)
         items = folders.enumerated().map { i, entry in
             ChatListFolderColumnItem(size, stableId: AnyHashable(i), folder: entry.folder, selected: false, unreadCount: entry.unreadCount, hasUnmutedUnread: entry.hasUnmutedUnread, invoke: { invoke(entry.folder) })
         }

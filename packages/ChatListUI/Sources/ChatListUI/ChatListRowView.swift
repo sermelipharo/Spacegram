@@ -3357,7 +3357,7 @@ public class ChatListRowView: TableRowView, RevealTableView {
 
         let selectionFrame: NSRect
         if item.shouldHideContent {
-            selectionFrame = photo.frame.insetBy(dx: -7, dy: -7)
+            selectionFrame = visualPhotoFrame(item).insetBy(dx: -6, dy: -6)
         } else {
             selectionFrame = containerView.bounds.insetBy(dx: 3, dy: 3)
         }
