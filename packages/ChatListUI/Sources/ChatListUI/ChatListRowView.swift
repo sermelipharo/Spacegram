@@ -2227,7 +2227,7 @@ public class ChatListRowView: TableRowView, RevealTableView {
                      presented = true
                  }
                  badgeShortView?.setFrameSize(badgeNode.size)
-                 badgeNode.aroundFill = _backgroundColor
+                 badgeNode.aroundFill = item.context.layout == .minimisize ? nil : _backgroundColor
                  badgeNode.view = badgeShortView
                  badgeNode.setNeedDisplay()
                  
