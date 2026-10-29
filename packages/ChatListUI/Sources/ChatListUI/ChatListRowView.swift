@@ -2582,8 +2582,8 @@ public class ChatListRowView: TableRowView, RevealTableView {
                  self.archivedPhoto?.layer?.cornerRadius = photo.radius
 
              } else {
-                 self.photoVideoView?._change(size: NSMakeSize(50, 50), animated: animated)
-                 self.archivedPhoto?._change(size: NSMakeSize(50, 50), animated: animated)
+                 self.photoVideoView?._change(size: photo.frame.size, animated: animated)
+                 self.archivedPhoto?._change(size: photo.frame.size, animated: animated)
                  
                  self.photoVideoView?._change(pos: NSMakePoint(0, 0), animated: animated)
                  self.archivedPhoto?._change(pos: NSMakePoint(0, 0), animated: animated)

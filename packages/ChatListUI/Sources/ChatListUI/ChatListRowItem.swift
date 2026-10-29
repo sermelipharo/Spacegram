@@ -2631,7 +2631,7 @@ public class ChatListRowItem: TableRowItem {
         if let hideStatus = hideStatus {
             switch hideStatus {
             case .collapsed:
-                return width == 82 ? 70 : 35
+                return context.layout == .minimisize ? 56 : 35
             default:
                 break
             }
