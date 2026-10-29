@@ -1704,6 +1704,7 @@ public class PeerListContainerView : Control {
 
         ContainedViewLayoutTransition.immediate.updateFrame(view: tableView, frame: NSMakeRect(0, 0, size.width, size.height - bottomInset))
         updateTableMask(spaceHeight: navigationHeight)
+        folderDock.isHidden = state.splitState != .minimisize
         folderDock.frame = NSMakeRect(0, size.height - contentBottomInset - folderDockHeight, size.width, folderDockHeight + contentBottomInset)
 
         updateBottomControls(size: size, transition: transition)

@@ -151,9 +151,18 @@ final class ChatListFolderDock: NSView {
 
     override init(frame frameRect: NSRect) {
         if #available(macOS 26.0, *) {
+            let container = NSView(frame: frameRect)
+            let blur = NSVisualEffectView(frame: frameRect)
+            blur.material = .hudWindow
+            blur.blendingMode = .withinWindow
+            blur.state = .active
+            blur.autoresizingMask = [.width, .height]
+            container.addSubview(blur)
             let glass = NSGlassEffectView(frame: frameRect)
             glass.cornerRadius = 0
-            backdrop = glass
+            glass.autoresizingMask = [.width, .height]
+            container.addSubview(glass)
+            backdrop = container
         } else {
             let effect = NSVisualEffectView(frame: frameRect)
             effect.material = .sidebar
@@ -189,7 +198,6 @@ final class ChatListFolderDock: NSView {
         }
         rows = items.map { _ in ChatListFolderColumnView(frame: NSMakeRect(0, 0, size.width, size.height)) }
         rows.forEach { addSubview($0) }
-        isHidden = items.isEmpty
         needsLayout = true
     }
 }

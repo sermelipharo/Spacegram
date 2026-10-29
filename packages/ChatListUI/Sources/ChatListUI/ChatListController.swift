@@ -1200,7 +1200,7 @@ public class ChatListController<Context: AccountContextProtocol> : PeersListCont
 
             var sortedEntries = mapped.sorted()
             
-            if state.filterData.columnFolders, mode == .plain, state.forumPeer == nil, !state.filterData.tabs.isEmpty {
+            if state.filterData.columnFolders, mode == .plain, state.forumPeer == nil, state.filterData.tabs.count > 1 {
                 let tabs = state.filterData.tabs
                 let selectedId = ChatListUIHooks.shared.chatListFilterId(state.filterData.filter)
                 let selectedIndex = tabs.firstIndex(where: { ChatListUIHooks.shared.chatListFilterId($0) == selectedId }) ?? 0
