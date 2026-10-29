@@ -35,13 +35,13 @@ public final class ChatListFolderColumnItem : GeneralRowItem {
     }
 
     public override var height: CGFloat {
-        return 28
+        return 34
     }
 
     public override func makeSize(_ width: CGFloat, oldWidth: CGFloat = 0) -> Bool {
         _ = super.makeSize(width, oldWidth: oldWidth)
         countLayout?.measure(width: 24)
-        titleLayout.measure(width: width - 16 - 8)
+        titleLayout.measure(width: width - 8 - 4)
         return true
     }
 
@@ -103,14 +103,14 @@ fileprivate final class ChatListFolderColumnView: TableRowView {
 
     override func layout() {
         super.layout()
-        plate.frame = NSMakeRect(8, 2, frame.width - 16, frame.height - 4)
+        plate.frame = NSMakeRect(4, 1, frame.width - 8, frame.height - 2)
         overlay.frame = plate.bounds
         if !countView.isHidden {
-            countBadge.frame = NSMakeRect(plate.frame.width - countView.frame.width - 8, plate.frame.height - 12, countView.frame.width + 8, 12)
+            countBadge.frame = NSMakeRect(plate.frame.width - countView.frame.width - 10, plate.frame.height - 14, countView.frame.width + 8, 12)
             countBadge.layer?.cornerRadius = 6
             countView.setFrameOrigin(NSMakePoint(countBadge.frame.minX + 4, countBadge.frame.minY + floorToScreenPixels((12 - countView.frame.height) / 2)))
         }
-        titleView.setFrameOrigin(NSMakePoint(floorToScreenPixels((plate.frame.width - titleView.frame.width) / 2), floorToScreenPixels((plate.frame.height - titleView.frame.height) / 2)))
+        titleView.setFrameOrigin(NSMakePoint(floorToScreenPixels((plate.frame.width - titleView.frame.width) / 2), 4))
     }
 
     override func set(item: TableRowItem, animated: Bool = false) {
@@ -138,7 +138,7 @@ final class ChatListFolderDock: NSVisualEffectView {
     private var items: [ChatListFolderColumnItem] = []
     private var rows: [ChatListFolderColumnView] = []
 
-    static let rowHeight: CGFloat = 28
+    static let rowHeight: CGFloat = 34
 
     var rowCount: Int {
         return items.count
@@ -172,7 +172,7 @@ final class ChatListFolderDock: NSVisualEffectView {
 
     func set(folders: [(folder: ChatListFilter, unreadCount: Int, hasUnmutedUnread: Bool)], invoke: @escaping (ChatListFilter) -> Void) {
         rows.forEach { $0.removeFromSuperview() }
-        let size = NSMakeSize(max(bounds.width, 64), ChatListFolderDock.rowHeight)
+        let size = NSMakeSize(max(bounds.width, 84), ChatListFolderDock.rowHeight)
         items = folders.enumerated().map { i, entry in
             ChatListFolderColumnItem(size, stableId: AnyHashable(i), folder: entry.folder, selected: false, unreadCount: entry.unreadCount, hasUnmutedUnread: entry.hasUnmutedUnread, invoke: { invoke(entry.folder) })
         }
