@@ -25,7 +25,7 @@ public final class ChatListFolderColumnItem : GeneralRowItem {
         self.unreadCount = unreadCount
         self.hasUnmutedUnread = hasUnmutedUnread
         self.invoke = invoke
-        self.titleLayout = TextViewLayout(.initialize(string: folder.title, color: selected ? theme.colors.accent : theme.colors.text, font: .medium(10)), maximumNumberOfLines: 1, truncationType: .end)
+        self.titleLayout = TextViewLayout(.initialize(string: folder.title, color: selected ? theme.colors.accent : theme.colors.text, font: selected ? .bold(10) : .medium(10)), maximumNumberOfLines: 1, truncationType: .end)
         if unreadCount > 0 {
             self.countLayout = TextViewLayout(.initialize(string: unreadCount.prettyNumber, color: .white, font: .medium(8)), maximumNumberOfLines: 1)
         } else {
@@ -78,9 +78,9 @@ fileprivate final class ChatListFolderColumnView: TableRowView {
         }
         addSubview(plate)
         plate.addSubview(titleView)
-        plate.addSubview(countBadge)
-        plate.addSubview(countView)
         plate.addSubview(overlay)
+        addSubview(countBadge)
+        addSubview(countView)
         titleView.userInteractionEnabled = false
         titleView.isSelectable = false
         countView.userInteractionEnabled = false
@@ -106,7 +106,7 @@ fileprivate final class ChatListFolderColumnView: TableRowView {
         plate.frame = NSMakeRect(2, 1, frame.width - 4, frame.height - 2)
         overlay.frame = plate.bounds
         if !countView.isHidden {
-            countBadge.frame = NSMakeRect(plate.frame.width - countView.frame.width - 10, 0, countView.frame.width + 8, 12)
+            countBadge.frame = NSMakeRect(frame.width - countView.frame.width - 12, 0, countView.frame.width + 8, 12)
             countBadge.layer?.cornerRadius = 6
             countView.setFrameOrigin(NSMakePoint(countBadge.frame.minX + 4, countBadge.frame.minY + floorToScreenPixels((12 - countView.frame.height) / 2)))
         }
@@ -118,7 +118,7 @@ fileprivate final class ChatListFolderColumnView: TableRowView {
         guard let item = item as? ChatListFolderColumnItem else {
             return
         }
-        plate.backgroundColor = item.isCurrentFolder ? theme.colors.accent.withAlphaComponent(0.14) : .clear
+        plate.backgroundColor = .clear
         titleView.update(item.titleLayout)
         if let count = item.countLayout {
             countView.isHidden = false
