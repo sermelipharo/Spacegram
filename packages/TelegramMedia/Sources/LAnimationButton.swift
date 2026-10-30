@@ -112,6 +112,13 @@ public class LAnimationButton: Button {
 
 
     
+    public func setAnimationSize(_ size: NSSize) {
+        if animationView.frame.size != size {
+            animationView.setFrameSize(size)
+            needsLayout = true
+        }
+    }
+
     public override func layout() {
         super.layout()
         animationView.center()

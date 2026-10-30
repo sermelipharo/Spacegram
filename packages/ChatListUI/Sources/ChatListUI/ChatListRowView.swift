@@ -2594,6 +2594,9 @@ public class ChatListRowView: TableRowView, RevealTableView {
                  self.archivedPhoto?.layer?.cornerRadius = photo.radius
                  self.photo.update(component: nil, availableSize: NSMakeSize(photo.frame.width - 6, photo.frame.height - 6), transition: transition)
              }
+             let archiveSide = item.avatarStoryIndicator != nil ? photo.frame.width - 6 : photo.frame.width
+             self.archivedPhoto?.setAnimationSize(NSMakeSize(floor(archiveSide * 0.92), floor(archiveSide * 0.92)))
+             self.archivedPhoto?.layer?.masksToBounds = true
              
              
              if let openMiniApp = item.ctxOpenMiniApp {
