@@ -604,6 +604,24 @@ final class AccountContext {
                                      |> map { state in
                                         return state.balance.value >= amount
                                      }, starsAllowed)
+                |> mapToSignal { [weak self] enough, allowed -> Signal<(Bool, Bool), NoError> in
+                    guard let self, enough, allowed, !UserDefaults.standard.bool(forKey: "spacegramSkipPaidReactionConfirm") else {
+                        return .single((enough, allowed))
+                    }
+                    return Signal { subscriber in
+                        //TODOLANG
+                        verifyAlert_button(for: self.window, header: "Send Stars", information: "Send a paid reaction for \(amount) \(amount == 1 ? "Star" : "Stars")?", ok: "Send", option: "Don't ask again", successHandler: { result in
+                            if result == .thrid {
+                                UserDefaults.standard.set(true, forKey: "spacegramSkipPaidReactionConfirm")
+                            }
+                            subscriber.putNext((true, true))
+                            subscriber.putCompletion()
+                        }, cancelHandler: {
+                            subscriber.putCompletion()
+                        })
+                        return EmptyDisposable
+                    }
+                }
             } else {
                 return .single((false, false))
             }
