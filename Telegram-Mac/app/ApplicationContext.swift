@@ -297,6 +297,8 @@ final class AuthorizedApplicationContext: NSObject, SplitViewDelegate {
     private var leftSidebarController: LeftSidebarController?
     
     private let loggedOutDisposable = MetaDisposable()
+    private var compactSearchObserver: NSObjectProtocol?
+    private var compactSearch: CompactSearchOverlay?
     private let altTabPreloadDisposable = MetaDisposable()
     
     private let settingsDisposable = MetaDisposable()
@@ -584,6 +586,10 @@ final class AuthorizedApplicationContext: NSObject, SplitViewDelegate {
             self?.rightController.push(ChatController(context: context, chatLocation: .peer(context.peerId)))
             return .invoked
         }, with: self, for: .Zero, priority: .low, modifierFlags: [.command])
+
+        compactSearchObserver = NotificationCenter.default.addObserver(forName: .spacegramCompactSearch, object: nil, queue: .main) { [weak self] _ in
+            self?.toggleCompactSearch()
+        }
         
         
         window.set(handler: { [weak self] _ -> KeyHandlerResult in
@@ -1122,6 +1128,22 @@ final class AuthorizedApplicationContext: NSObject, SplitViewDelegate {
         }
     }
     
+    private func toggleCompactSearch() {
+        if let current = compactSearch {
+            current.close()
+            return
+        }
+        guard context.layout == .minimisize else {
+            return
+        }
+        let overlay = CompactSearchOverlay(context: context, frame: rightController.view.bounds)
+        overlay.onClose = { [weak self] in
+            self?.compactSearch = nil
+        }
+        rightController.view.addSubview(overlay)
+        compactSearch = overlay
+    }
+
     private func openChat(_ index: Int, _ force: Bool = false) {
         leftController.openChat(index, force: force)
     }

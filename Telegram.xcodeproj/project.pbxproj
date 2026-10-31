@@ -746,6 +746,7 @@
 		AAFDB93441D554F4DDDD2A3C /* MMMenuItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = A18524B4FE5ADD178018D610 /* MMMenuItem.swift */; };
 		AD222865622A8F09AF07440F /* TelegramCallsCore in Frameworks */ = {isa = PBXBuildFile; productRef = 7E5BFC7C71CF642C3D445C46 /* TelegramCallsCore */; };
 		AD3BD9CEA2704F31B1959842 /* SidebarUIIntegration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DE33C58072B4802BE646848 /* SidebarUIIntegration.swift */; };
+		5C0A1A2B3C4D5E6F70819203 /* CompactSearchOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C0A1A2B3C4D5E6F70819204 /* CompactSearchOverlay.swift */; };
 		AE0AEBC4B16C8C659D4DB6B7 /* PaymentsUI in Frameworks */ = {isa = PBXBuildFile; productRef = 18CF8F593438CC8B1D04D500 /* PaymentsUI */; };
 		AE521DA8D88980730D7AAC9E /* ExternalVideoUtils in Frameworks */ = {isa = PBXBuildFile; productRef = 3B17F420AC06201067FE96A3 /* ExternalVideoUtils */; };
 		B1D7EAFC2F064C633E223507 /* AuthUI in Frameworks */ = {isa = PBXBuildFile; productRef = 76598EE4D43D0B420129171B /* AuthUI */; };
@@ -1686,6 +1687,7 @@
 		87E78883C7C3C781E2B12AA7 /* CodeSyntaxKeyBridge.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CodeSyntaxKeyBridge.swift; sourceTree = "<group>"; };
 		8D2355DF47ECDDD0EEB526DD /* MessageCustomTagsCompat.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MessageCustomTagsCompat.swift; sourceTree = "<group>"; };
 		8DE33C58072B4802BE646848 /* SidebarUIIntegration.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SidebarUIIntegration.swift; sourceTree = "<group>"; };
+		5C0A1A2B3C4D5E6F70819204 /* CompactSearchOverlay.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CompactSearchOverlay.swift; sourceTree = "<group>"; };
 		90B28FDFC126F6F1AA281438 /* TelegramMediaUtils */ = {isa = PBXFileReference; lastKnownFileType = folder; name = TelegramMediaUtils; path = packages/TelegramMediaUtils; sourceTree = "<group>"; };
 		9F03680222771A9600456348 /* anim_unarchive.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = anim_unarchive.json; sourceTree = "<group>"; };
 		9F03680322771A9600456348 /* anim_ungroup.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = anim_ungroup.json; sourceTree = "<group>"; };
@@ -3404,6 +3406,7 @@
 				047835680ACB43C8BAE552A3 /* FolderSharingUIIntegration.swift */,
 				C0C3576FEC2B401CA8A25439 /* WalletUIIntegration.swift */,
 				8DE33C58072B4802BE646848 /* SidebarUIIntegration.swift */,
+				5C0A1A2B3C4D5E6F70819204 /* CompactSearchOverlay.swift */,
 			);
 			path = bridges;
 			sourceTree = "<group>";
@@ -4721,6 +4724,7 @@
 				CD43762E46BA48F697A64271 /* FolderSharingUIIntegration.swift in Sources */,
 				9C3D251712014DBDB798F464 /* WalletUIIntegration.swift in Sources */,
 				AD3BD9CEA2704F31B1959842 /* SidebarUIIntegration.swift in Sources */,
+				5C0A1A2B3C4D5E6F70819203 /* CompactSearchOverlay.swift in Sources */,
 				F6679659E4D9A18FC9DBFF58 /* Exports.swift in Sources */,
 				AAFDB93441D554F4DDDD2A3C /* MMMenuItem.swift in Sources */,
 				9F0F8E82226DCD1C00A97F6A /* OpmizeDatabaseView.swift in Sources */,

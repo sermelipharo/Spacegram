@@ -352,6 +352,7 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
     private let compactMenuButton = ImageButton()
     private let compactStrip = View(frame: .zero)
     private let compactFoldersButton = ImageButton()
+    private let compactSearchButton = ImageButton()
     private var compactHasFolders = false
     private var compactFilterData: FilterData?
     private let compactMenuDisposable = MetaDisposable()
@@ -440,7 +441,7 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
     }
 
     private var compactStripHeight: CGFloat {
-        return compactHasFolders ? 108 : 64
+        return compactHasFolders ? 152 : 108
     }
 
     private func updateCompactInsets() {
@@ -456,6 +457,26 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
         let y = bounds.height - compactMenuButton.frame.height - 10
         compactMenuButton.setFrameOrigin(NSMakePoint(x, y))
         compactFoldersButton.setFrameOrigin(NSMakePoint(x, y - compactFoldersButton.frame.height))
+        compactSearchButton.set(image: MainViewController.loupeImage(color: theme.colors.grayIcon), for: .Normal)
+        compactSearchButton.setFrameOrigin(NSMakePoint(x, y - compactFoldersButton.frame.height * (compactHasFolders ? 2 : 1)))
+    }
+
+    private static func loupeImage(color: NSColor) -> CGImage {
+        let size = NSMakeSize(20, 20)
+        let image = NSImage(size: size, flipped: false) { _ in
+            color.setStroke()
+            let circle = NSBezierPath(ovalIn: NSMakeRect(2, 6, 11, 11))
+            circle.lineWidth = 2
+            circle.stroke()
+            let handle = NSBezierPath()
+            handle.lineWidth = 2
+            handle.lineCapStyle = .round
+            handle.move(to: NSMakePoint(11.5, 7.5))
+            handle.line(to: NSMakePoint(17, 2))
+            handle.stroke()
+            return true
+        }
+        return image.cgImage(forProposedRect: nil, context: nil, hints: nil)!
     }
 
     private static func burgerImage(color: NSColor) -> CGImage {
@@ -579,6 +600,14 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
             }
         }, for: .Click)
         genericView.addSubview(compactFoldersButton)
+        compactSearchButton.autohighlight = false
+        compactSearchButton.scaleOnClick = true
+        compactSearchButton.setFrameSize(NSMakeSize(44, 44))
+        compactSearchButton.isHidden = true
+        compactSearchButton.set(handler: { _ in
+            NotificationCenter.default.post(name: .spacegramCompactSearch, object: nil)
+        }, for: .Click)
+        genericView.addSubview(compactSearchButton)
         compactMenuDisposable.set(combineLatest(queue: .mainQueue(), context.layoutValue, chatList.filterSignal).start(next: { [weak self] layout, filterData in
             guard let self else { return }
             self.compactFilterData = filterData
@@ -587,6 +616,7 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
             self.compactMenuButton.isHidden = !self.compactMenuVisible
             self.compactFoldersButton.isHidden = !(self.compactMenuVisible && self.compactHasFolders)
             self.compactStrip.isHidden = !self.compactMenuVisible
+            self.compactSearchButton.isHidden = !self.compactMenuVisible
             self.genericView.translucent = self.compactMenuVisible
             if let window = self.genericView.window {
                 window.isOpaque = !self.compactMenuVisible

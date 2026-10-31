@@ -11818,6 +11818,10 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
     }
     
     
+    public func saveScrollStateNow() {
+        chatInteraction.saveState(scrollState: immediateScrollState())
+    }
+
     func immediateScrollState() -> ChatInterfaceHistoryScrollState? {
         
         var message:Message?
