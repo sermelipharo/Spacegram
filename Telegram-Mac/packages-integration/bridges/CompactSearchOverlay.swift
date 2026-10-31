@@ -22,7 +22,7 @@ final class CompactSearchOverlay: NSView {
     private let separator = NSView()
     private let titleDisposable = MetaDisposable()
     private var results: SearchController<AccountContext>?
-    private var chat: ChatController<AccountContext>?
+    private var chat: ChatController?
     private var currentPeerId: PeerId?
     var onClose: (() -> Void)?
 
