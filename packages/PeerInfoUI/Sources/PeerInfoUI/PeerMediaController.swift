@@ -31,9 +31,31 @@
  private final class SearchContainerView : View {
     fileprivate let searchView: SearchView = SearchView(frame: NSMakeRect(0, 0, 200, 30))
     fileprivate let close: ImageButton = ImageButton()
+    fileprivate let from: TextButton = TextButton()
+    fileprivate var fromTitle: String? {
+        didSet {
+            updateFromTitle()
+            needsLayout = true
+        }
+    }
+    fileprivate var canPickFrom: Bool = false {
+        didSet {
+            from.isHidden = !canPickFrom
+            needsLayout = true
+        }
+    }
+    private func updateFromTitle() {
+        from.set(text: fromTitle.flatMap { "\($0) ✕" } ?? strings().chatSearchFrom, for: .Normal)
+        _ = from.sizeToFit(NSZeroSize, NSMakeSize(0, 30), thatFit: false)
+        if from.frame.width > 140 {
+            from.setFrameSize(NSMakeSize(140, from.frame.height))
+        }
+    }
     required init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         addSubview(searchView)
+        addSubview(from)
+        from.isHidden = true
         addSubview(close)
         close.setAccessibilityLabel(strings().voiceOverCommonClose)
         layer?.cornerRadius = PeerMediaTabsView.height / 2
@@ -47,13 +69,20 @@
         backgroundColor = theme.colors.background
         close.set(image: theme.icons.dismissPinned, for: .Normal)
         _ = close.sizeToFit()
+        from.set(font: .medium(.text), for: .Normal)
+        from.set(color: theme.colors.accent, for: .Normal)
+        updateFromTitle()
     }
     
     override func layout() {
         super.layout()
-        searchView.setFrameSize(NSMakeSize(frame.width - close.frame.width - 30, 30))
+        let fromWidth = from.isHidden ? 0 : from.frame.width + 10
+        searchView.setFrameSize(NSMakeSize(frame.width - close.frame.width - 30 - fromWidth, 30))
         searchView.centerY(x: 10)
-        close.centerY(x: searchView.frame.maxX + 10)
+        if !from.isHidden {
+            from.centerY(x: searchView.frame.maxX + 10)
+        }
+        close.centerY(x: (from.isHidden ? searchView.frame.maxX : from.frame.maxX) + 10)
     }
     
     required init?(coder: NSCoder) {
@@ -247,6 +276,13 @@
     fileprivate let topPanelView = View()
     fileprivate let tabsView = PeerMediaTabsView(frame: .zero)
     fileprivate var searchPanelView: SearchContainerView?
+    var canSearchFrom: Bool = false
+    var onSearchFrom: (() -> Void)?
+    var searchFromTitle: String? {
+        didSet {
+            searchPanelView?.fromTitle = searchFromTitle
+        }
+    }
     private let contentView = View()
     private let headerUnderlayView = View()
     private let headerEdgeView = EdgeEffectView(frame: .zero)
@@ -610,6 +646,11 @@
                 let searchPanelView = SearchContainerView(frame: searchPanelFrame)
                 self.searchPanelView = searchPanelView
                 topPanelView.addSubview(searchPanelView)
+                searchPanelView.canPickFrom = canSearchFrom
+                searchPanelView.fromTitle = searchFromTitle
+                searchPanelView.from.set(handler: { [weak self] _ in
+                    self?.onSearchFrom?()
+                }, for: .Click)
                 searchPanelView.searchView.change(state: .Focus, false)
                 searchPanelView.searchView.searchInteractions = SearchInteractions({ _, _ in
     
@@ -634,6 +675,7 @@
             tabsView._change(opacity: 1, animated: state.animated)
             if let searchPanelView = self.searchPanelView {
                 self.searchPanelView = nil
+                self.searchFromTitle = nil
                 performSubviewRemoval(searchPanelView, animated: state.animated)
             }
         }
@@ -2031,6 +2073,16 @@
         updateSearchBarVisibility(self.hasSearch)
         
         
+        genericView.searchFromTitle = nil
+        (controller as? PeerMediaFromSearchable)?.setSearchFrom(nil)
+        genericView.canSearchFrom = false
+        if let peer = self.peer, (peer.isGroup || peer.isSupergroup), !peer.isMonoForum, controller is PeerMediaFromSearchable {
+            genericView.canSearchFrom = true
+            genericView.onSearchFrom = { [weak self, weak controller] in
+                self?.pickSearchFrom(controller as? PeerMediaFromSearchable)
+            }
+        }
+        
         if let controller = controller as? PeerMediaSearchable {
             
             if let externalSearchData = self.externalSearchData {
@@ -2449,6 +2501,32 @@
         if let searchBtn = searchBarButton {
             stackedBar.change(opacity: visible ? 1 : 0, for: searchBtn, animated: animated)
         }
+    }
+    
+    private func pickSearchFrom(_ controller: PeerMediaFromSearchable?) {
+        guard let controller = controller else {
+            return
+        }
+        if genericView.searchFromTitle != nil {
+            controller.setSearchFrom(nil)
+            genericView.searchFromTitle = nil
+            return
+        }
+        let peerId = self.peerId
+        let context = self.context
+        _ = (selectModalPeers(window: context.window, context: context, title: strings().chatSearchFrom, behavior: peerId.namespace == Namespaces.Peer.CloudGroup ? SelectGroupMembersBehavior(peerId: peerId, limit: 1, settings: []) : SelectChannelMembersBehavior(peerId: peerId, peerChannelMemberContextsManager: context.peerChannelMemberCategoriesContextsManager, limit: 1, settings: [])) |> deliverOnMainQueue |> map {$0.first}
+            |> mapToSignal { memberId -> Signal<Peer?, NoError> in
+                guard let memberId = memberId else {
+                    return .single(nil)
+                }
+                return context.account.postbox.transaction { $0.getPeer(memberId) }
+            }
+            |> deliverOnMainQueue).start(next: { [weak self, weak controller] member in
+                if let member = member {
+                    controller?.setSearchFrom(member.id)
+                    self?.genericView.searchFromTitle = member.compactDisplayTitle
+                }
+            })
     }
     
     private func searchGroupUsers() {

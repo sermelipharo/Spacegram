@@ -336,7 +336,7 @@ private final class PeerMediaSupplyment : InteractionContentViewProtocol {
     }
 }
 
-open class PeerMediaPhotosController<Context: AccountContextProtocol>: TableViewController<Context>, PeerMediaSearchable {
+open class PeerMediaPhotosController<Context: AccountContextProtocol>: TableViewController<Context>, PeerMediaSearchable, PeerMediaFromSearchable {
 
     open override var defaultBarTitle: String {
         return localizedString("Telegram.PeerMediaPhotosController")
@@ -543,13 +543,13 @@ open class PeerMediaPhotosController<Context: AccountContextProtocol>: TableView
         let searchLoadMore = self.searchLoadMore.signal()
         
         
-        let history: Signal<(ChatHistoryViewUpdate?, SearchResult?, SearchState, TableSavingSide?), NoError> = combineLatest(searchState.get(), location.get(), externalSearch.get()) |> mapToSignal { search, location, externalSearch in
+        let history: Signal<(ChatHistoryViewUpdate?, SearchResult?, SearchState, TableSavingSide?), NoError> = combineLatest(searchState.get(), location.get(), externalSearch.get(), searchFrom.get()) |> mapToSignal { search, location, externalSearch, searchFrom in
             if let externalSearch = externalSearch {
                 return .single((nil, SearchResult(result: externalSearch.messages), search, nil))
-            } else if !search.request.isEmpty {
+            } else if !search.request.isEmpty || searchFrom != nil {
                 
                 return peerMediaSearchMessages(loadMore: searchLoadMore, request: { state in
-                    context.engine.messages.searchMessages(location: .peer(peerId: peerId, fromId: nil, tags: tags, reactions: [], threadId: threadId, minDate: nil, maxDate: nil), query: search.request, state: state)
+                    context.engine.messages.searchMessages(location: .peer(peerId: peerId, fromId: searchFrom, tags: tags, reactions: [], threadId: threadId, minDate: nil, maxDate: nil), query: search.request, state: state)
                     |> delay(0.2, queue: .concurrentDefaultQueue())
                 }) |> map { (nil, SearchResult(result: $0), search, nil) }
             } else {
@@ -734,10 +734,15 @@ open class PeerMediaPhotosController<Context: AccountContextProtocol>: TableView
     
     private let mediaSearchState:ValuePromise<MediaSearchState> = ValuePromise(ignoreRepeated: true)
     private let searchState:Promise<SearchState> = Promise()
+    private let searchFrom = ValuePromise<PeerId?>(nil, ignoreRepeated: true)
     private let searchLoadMore = ValuePipe<Void>()
     
     public func setSearchValue(_ value: Signal<SearchState, NoError>) {
         searchState.set(value)
+    }
+    
+    public func setSearchFrom(_ peerId: PeerId?) {
+        searchFrom.set(peerId)
     }
     
     private let externalSearch:Promise<ExternalSearchMessages?> = Promise(nil)
@@ -800,6 +805,7 @@ open class PeerMediaPhotosController<Context: AccountContextProtocol>: TableView
             if isSearch {
                 searchState.set(.single(.init(state: .Focus, request: nil)))
             } else {
+                searchFrom.set(nil)
                 searchState.set(.single(.init(state: .None, request: nil)))
             }
         }

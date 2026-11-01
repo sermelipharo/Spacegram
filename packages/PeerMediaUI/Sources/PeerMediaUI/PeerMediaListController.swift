@@ -292,7 +292,11 @@ public struct PeerMediaUpdate {
 }
 
 
-open class PeerMediaListController<Context: AccountContextProtocol>: TableViewController<Context>, PeerMediaSearchable {
+public protocol PeerMediaFromSearchable : AnyObject {
+    func setSearchFrom(_ peerId: PeerId?)
+}
+
+open class PeerMediaListController<Context: AccountContextProtocol>: TableViewController<Context>, PeerMediaSearchable, PeerMediaFromSearchable {
 
     open override var defaultBarTitle: String {
         return localizedString("Telegram.PeerMediaListController")
@@ -306,11 +310,16 @@ open class PeerMediaListController<Context: AccountContextProtocol>: TableViewCo
     private let mediaSearchState:ValuePromise<MediaSearchState> = ValuePromise(ignoreRepeated: true)
     private let searchState:Promise<SearchState> = Promise()
     private let searchLoadMore = ValuePipe<Void>()
+    private let searchFrom = ValuePromise<PeerId?>(nil, ignoreRepeated: true)
     private var isExternalSearch: Bool = false
     private let externalSearch:Promise<ExternalSearchMessages?> = Promise(nil)
 
     public func setSearchValue(_ value: Signal<SearchState, NoError>) {
         searchState.set(value)
+    }
+    
+    public func setSearchFrom(_ peerId: PeerId?) {
+        searchFrom.set(peerId)
     }
     
     public func setExternalSearch(_ value: Signal<ExternalSearchMessages?, NoError>, _ loadMore: @escaping () -> Void) {
@@ -326,6 +335,7 @@ open class PeerMediaListController<Context: AccountContextProtocol>: TableViewCo
             if isSearch {
                 searchState.set(.single(.init(state: .Focus, request: nil)))
             } else {
+                searchFrom.set(nil)
                 searchState.set(.single(.init(state: .None, request: nil)))
             }
         }
@@ -432,12 +442,12 @@ open class PeerMediaListController<Context: AccountContextProtocol>: TableViewCo
         let searchLoadMore = self.searchLoadMore.signal()
 
         
-        let historyViewUpdate = combineLatest(location.get(), searchState.get(), externalSearch.get()) |> deliverOnMainQueue
-         |> mapToSignal { [weak self] location, searchState, externalSearch -> Signal<PeerMediaUpdate, NoError> in
+        let historyViewUpdate = combineLatest(location.get(), searchState.get(), externalSearch.get(), searchFrom.get()) |> deliverOnMainQueue
+         |> mapToSignal { [weak self] location, searchState, externalSearch, searchFrom -> Signal<PeerMediaUpdate, NoError> in
             if let strongSelf = self {
                 if let externalSearch = externalSearch {
                     return .single(PeerMediaUpdate(messages: externalSearch.messages, updateType: .history, laterId: nil, earlierId: nil, searchState: searchState, contentSettings: context.contentSettings))
-                } else if searchState.request.isEmpty {
+                } else if searchState.request.isEmpty && searchFrom == nil {
                     return combineLatest(queue: prepareQueue, chatHistoryViewForLocation(location, context: context, chatLocation: .peer(peerId), fixedCombinedReadStates: nil, tag: .tag(tagMask), additionalData: [], chatLocationInput: chatLocationInput), automaticDownloadSettings(postbox: context.account.postbox)) |> mapToQueue { view, settings -> Signal<PeerMediaUpdate, NoError> in
                         switch view {
                         case .Loading:
@@ -456,7 +466,7 @@ open class PeerMediaListController<Context: AccountContextProtocol>: TableViewCo
                     }
                 } else {
                     let searchMessagesLocation: SearchMessagesLocation
-                    searchMessagesLocation = .peer(peerId: peerId, fromId: nil, tags: tagMask, reactions: nil, threadId: threadId, minDate: nil, maxDate: nil)
+                    searchMessagesLocation = .peer(peerId: peerId, fromId: searchFrom, tags: tagMask, reactions: nil, threadId: threadId, minDate: nil, maxDate: nil)
                     
                     let update = strongSelf.updateView.modify {$0?.withUpdatedUpdatedType(.loading)} ?? PeerMediaUpdate()
                     return peerMediaSearchMessages(loadMore: searchLoadMore, request: { state in
