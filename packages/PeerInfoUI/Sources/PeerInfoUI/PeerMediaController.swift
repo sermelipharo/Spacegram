@@ -253,6 +253,19 @@
      fileprivate var topPanelView: NSView {
          return self.view.topPanelView
      }
+    var canSearchFrom: Bool {
+        get { return self.view.canSearchFrom }
+        set { self.view.canSearchFrom = newValue }
+    }
+    var onSearchFrom: (() -> Void)? {
+        get { return self.view.onSearchFrom }
+        set { self.view.onSearchFrom = newValue }
+    }
+    var searchFromTitle: String? {
+        get { return self.view.searchFromTitle }
+        set { self.view.searchFromTitle = newValue }
+    }
+    
     fileprivate var searchPanelView: SearchContainerView? {
         return self.view.searchPanelView
     }
@@ -2515,13 +2528,15 @@
         let peerId = self.peerId
         let context = self.context
         _ = (selectModalPeers(window: context.window, context: context, title: strings().chatSearchFrom, behavior: peerId.namespace == Namespaces.Peer.CloudGroup ? SelectGroupMembersBehavior(peerId: peerId, limit: 1, settings: []) : SelectChannelMembersBehavior(peerId: peerId, peerChannelMemberContextsManager: context.peerChannelMemberCategoriesContextsManager, limit: 1, settings: [])) |> deliverOnMainQueue |> map {$0.first}
-            |> mapToSignal { memberId -> Signal<Peer?, NoError> in
+            |> mapToSignal { (memberId: PeerId?) -> Signal<Peer?, NoError> in
                 guard let memberId = memberId else {
-                    return .single(nil)
+                    return Signal<Peer?, NoError>.single(nil)
                 }
-                return context.account.postbox.transaction { $0.getPeer(memberId) }
+                return context.account.postbox.transaction { transaction -> Peer? in
+                    return transaction.getPeer(memberId)
+                }
             }
-            |> deliverOnMainQueue).start(next: { [weak self, weak controller] member in
+            |> deliverOnMainQueue).start(next: { [weak self, weak controller] (member: Peer?) in
                 if let member = member {
                     controller?.setSearchFrom(member.id)
                     self?.genericView.searchFromTitle = member.compactDisplayTitle
