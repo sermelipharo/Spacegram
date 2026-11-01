@@ -3297,6 +3297,10 @@ public class ChatListRowView: TableRowView, RevealTableView {
         if photo.frame.size.width != side {
             photo.setFrameSize(NSMakeSize(side, side))
         }
+        let font = NSFont.avatar(side / 2)
+        if photo.avatar.font.pointSize != font.pointSize {
+            photo.avatar.font = font
+        }
     }
 
     public override func layout() {
