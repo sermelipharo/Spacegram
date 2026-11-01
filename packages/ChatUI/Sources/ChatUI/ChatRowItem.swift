@@ -1049,6 +1049,13 @@ public class ChatRowItem: TableRowItem {
         return chatInteraction.presentation.canSendReactions(to: peer)
     }
 
+    private var isKnownReactionRestricted: Bool {
+        guard let peer = reactionPermissionPeer else {
+            return false
+        }
+        return !chatInteraction.presentation.canSendReactions(to: peer)
+    }
+
     public var canReact: Bool {
         return canSendReactionsHere && isReactable
     }
@@ -1817,7 +1824,7 @@ public class ChatRowItem: TableRowItem {
             let chatInteraction = self.chatInteraction
             if let reactions = reactions, !reactions.reactions.isEmpty, let available = context.reactions.available {
                 let layout = ChatReactionsLayout(context: chatInteraction.interactionContext, message: message, available: available, peerAllowed: chatInteraction.presentation.allowedReactions, savedMessageTags: entry.additionalData.savedMessageTags, engine: chatInteraction.interactionContext.reactions, theme: presentation, renderType: renderType, currentTag: currentTag, isIncoming: isIncoming, isOutOfBounds: isBubbleFullFilled && (self.captionLayouts.isEmpty || invertMedia) && (commentsBubbleData == nil || !invertMedia), hasWallpaper: presentation.hasWallpaper, stateOverlayTextColor: isStateOverlayLayout ? stateOverlayTextColor : (!hasBubble ? presentation.colors.grayText : presentation.chat.grayText(isIncoming, entry.renderType == .bubble)), canSendReactions: { [weak self] in
-                    self?.canSendReactionsHere ?? false
+                    !(self?.isKnownReactionRestricted ?? false)
                 }, openInfo: { peerId in
                     ChatHistoryUIHooks.shared.pushReactionPeerInfoObserved(context.bindings.rootNavigation(), context, peerId, message.id)
                 }, runEffect: { [weak chatInteraction] value, isLarge in
