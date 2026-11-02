@@ -167,7 +167,7 @@ jobs:
             DEVELOPMENT_TEAM= \
             PROVISIONING_PROFILE_SPECIFIER= \
             CODE_SIGN_ENTITLEMENTS="$PWD/ci/Telegram-adhoc.entitlements" \
-            OTHER_SWIFT_FLAGS='$(inherited) -D GITHUB' \
+            OTHER_SWIFT_FLAGS='$(inherited) -D GITHUB -Xfrontend -assert-config -Xfrontend Release' \
             build 2>&1 | tee xcodebuild.log | grep -E '(error:|warning: unable|BUILD (SUCCEEDED|FAILED))' || true
           du -sh build/DerivedData/* 2>/dev/null || true
           grep -q 'BUILD SUCCEEDED' xcodebuild.log
