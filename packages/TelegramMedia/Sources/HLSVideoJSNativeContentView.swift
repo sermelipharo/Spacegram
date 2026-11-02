@@ -591,7 +591,7 @@ private final class SharedHLSVideoJSContext: NSObject {
         if (className == "VideoElement") {
             if (methodName == "constructor") {
                 guard let instanceId = params["instanceId"] as? Int else {
-                    assertionFailure()
+                    NSLog("[HLSBridge] guard failed line=%ld class=%@ method=%@ keys=%@", 594, className, methodName, Array(params.keys).description)
                     return
                 }
                 let videoElement = VideoElement(instanceId: instanceId)
@@ -599,11 +599,11 @@ private final class SharedHLSVideoJSContext: NSObject {
                 completion([:])
             } else if (methodName == "setMediaSource") {
                 guard let instanceId = params["instanceId"] as? Int else {
-                    assertionFailure()
+                    NSLog("[HLSBridge] guard failed line=%ld class=%@ method=%@ keys=%@", 602, className, methodName, Array(params.keys).description)
                     return
                 }
                 guard let mediaSourceId = params["mediaSourceId"] as? Int else {
-                    assertionFailure()
+                    NSLog("[HLSBridge] guard failed line=%ld class=%@ method=%@ keys=%@", 606, className, methodName, Array(params.keys).description)
                     return
                 }
                 guard let (_, videoElement) = SharedHLSVideoJSContext.shared.videoElements.first(where: { $0.value.instanceId == instanceId }) else {
@@ -612,11 +612,11 @@ private final class SharedHLSVideoJSContext: NSObject {
                 videoElement.mediaSourceId = mediaSourceId
             } else if (methodName == "setCurrentTime") {
                 guard let instanceId = params["instanceId"] as? Int else {
-                    assertionFailure()
+                    NSLog("[HLSBridge] guard failed line=%ld class=%@ method=%@ keys=%@", 615, className, methodName, Array(params.keys).description)
                     return
                 }
                 guard let currentTime = params["currentTime"] as? Double else {
-                    assertionFailure()
+                    NSLog("[HLSBridge] guard failed line=%ld class=%@ method=%@ keys=%@", 619, className, methodName, Array(params.keys).description)
                     return
                 }
                 
@@ -627,11 +627,11 @@ private final class SharedHLSVideoJSContext: NSObject {
                 completion([:])
             } else if (methodName == "setPlaybackRate") {
                 guard let instanceId = params["instanceId"] as? Int else {
-                    assertionFailure()
+                    NSLog("[HLSBridge] guard failed line=%ld class=%@ method=%@ keys=%@", 630, className, methodName, Array(params.keys).description)
                     return
                 }
                 guard let playbackRate = params["playbackRate"] as? Double else {
-                    assertionFailure()
+                    NSLog("[HLSBridge] guard failed line=%ld class=%@ method=%@ keys=%@", 634, className, methodName, Array(params.keys).description)
                     return
                 }
                 
@@ -642,7 +642,7 @@ private final class SharedHLSVideoJSContext: NSObject {
                 completion([:])
             } else if (methodName == "play") {
                 guard let instanceId = params["instanceId"] as? Int else {
-                    assertionFailure()
+                    NSLog("[HLSBridge] guard failed line=%ld class=%@ method=%@ keys=%@", 645, className, methodName, Array(params.keys).description)
                     return
                 }
                 if let instance = self.contextReferences[instanceId]?.contentNode {
@@ -651,7 +651,7 @@ private final class SharedHLSVideoJSContext: NSObject {
                 completion([:])
             } else if (methodName == "pause") {
                 guard let instanceId = params["instanceId"] as? Int else {
-                    assertionFailure()
+                    NSLog("[HLSBridge] guard failed line=%ld class=%@ method=%@ keys=%@", 654, className, methodName, Array(params.keys).description)
                     return
                 }
                 if let instance = self.contextReferences[instanceId]?.contentNode {
@@ -666,11 +666,11 @@ private final class SharedHLSVideoJSContext: NSObject {
                 completion([:])
             } else if (methodName == "setDuration") {
                 guard let duration = params["duration"] as? Double else {
-                    assertionFailure()
+                    NSLog("[HLSBridge] guard failed line=%ld class=%@ method=%@ keys=%@", 669, className, methodName, Array(params.keys).description)
                     return
                 }
                 guard let mediaSource = SharedHLSVideoJSContext.shared.mediaSources[bridgeId] else {
-                    assertionFailure()
+                    NSLog("[HLSBridge] guard failed line=%ld class=%@ method=%@ keys=%@", 673, className, methodName, Array(params.keys).description)
                     return
                 }
                 var durationUpdated = false
@@ -710,11 +710,11 @@ private final class SharedHLSVideoJSContext: NSObject {
                 completion([:])
             } else if (methodName == "updateSourceBuffers") {
                 guard let ids = params["ids"] as? [Int] else {
-                    assertionFailure()
+                    NSLog("[HLSBridge] guard failed line=%ld class=%@ method=%@ keys=%@", 713, className, methodName, Array(params.keys).description)
                     return
                 }
                 guard let mediaSource = SharedHLSVideoJSContext.shared.mediaSources[bridgeId] else {
-                    assertionFailure()
+                    NSLog("[HLSBridge] guard failed line=%ld class=%@ method=%@ keys=%@", 717, className, methodName, Array(params.keys).description)
                     return
                 }
                 mediaSource.sourceBufferIds = ids
@@ -730,11 +730,11 @@ private final class SharedHLSVideoJSContext: NSObject {
         } else if (className == "SourceBuffer") {
             if (methodName == "constructor") {
                 guard let mediaSourceId = params["mediaSourceId"] as? Int else {
-                    assertionFailure()
+                    NSLog("[HLSBridge] guard failed line=%ld class=%@ method=%@ keys=%@", 733, className, methodName, Array(params.keys).description)
                     return
                 }
                 guard let mimeType = params["mimeType"] as? String else {
-                    assertionFailure()
+                    NSLog("[HLSBridge] guard failed line=%ld class=%@ method=%@ keys=%@", 737, className, methodName, Array(params.keys).description)
                     return
                 }
                 let sourceBuffer = SourceBuffer(mediaSourceId: mediaSourceId, mimeType: mimeType)
@@ -743,15 +743,15 @@ private final class SharedHLSVideoJSContext: NSObject {
                 completion([:])
             } else if (methodName == "appendBuffer") {
                 guard let base64Data = params["data"] as? String else {
-                    assertionFailure()
+                    NSLog("[HLSBridge] guard failed line=%ld class=%@ method=%@ keys=%@", 746, className, methodName, Array(params.keys).description)
                     return
                 }
                 guard let data = Data(base64Encoded: base64Data.data(using: .utf8)!) else {
-                    assertionFailure()
+                    NSLog("[HLSBridge] guard failed line=%ld class=%@ method=%@ keys=%@", 750, className, methodName, Array(params.keys).description)
                     return
                 }
                 guard let sourceBuffer = SharedHLSVideoJSContext.shared.sourceBuffers[bridgeId] else {
-                    assertionFailure()
+                    NSLog("[HLSBridge] guard failed line=%ld class=%@ method=%@ keys=%@", 754, className, methodName, Array(params.keys).description)
                     return
                 }
                 sourceBuffer.appendBuffer(data: data, completion: { bufferedRanges in
@@ -759,11 +759,11 @@ private final class SharedHLSVideoJSContext: NSObject {
                 })
             } else if methodName == "remove" {
                 guard let start = params["start"] as? Double, let end = params["end"] as? Double else {
-                    assertionFailure()
+                    NSLog("[HLSBridge] guard failed line=%ld class=%@ method=%@ keys=%@", 762, className, methodName, Array(params.keys).description)
                     return
                 }
                 guard let sourceBuffer = SharedHLSVideoJSContext.shared.sourceBuffers[bridgeId] else {
-                    assertionFailure()
+                    NSLog("[HLSBridge] guard failed line=%ld class=%@ method=%@ keys=%@", 766, className, methodName, Array(params.keys).description)
                     return
                 }
                 sourceBuffer.remove(start: start, end: end, completion: { bufferedRanges in
@@ -771,7 +771,7 @@ private final class SharedHLSVideoJSContext: NSObject {
                 })
             } else if methodName == "abort" {
                 guard let sourceBuffer = SharedHLSVideoJSContext.shared.sourceBuffers[bridgeId] else {
-                    assertionFailure()
+                    NSLog("[HLSBridge] guard failed line=%ld class=%@ method=%@ keys=%@", 774, className, methodName, Array(params.keys).description)
                     return
                 }
                 sourceBuffer.abortOperation()
@@ -780,19 +780,19 @@ private final class SharedHLSVideoJSContext: NSObject {
         } else if className == "XMLHttpRequest" {
             if methodName == "load" {
                 guard let id = params["id"] as? Int else {
-                    assertionFailure()
+                    NSLog("[HLSBridge] guard failed line=%ld class=%@ method=%@ keys=%@", 783, className, methodName, Array(params.keys).description)
                     return
                 }
                 guard let url = params["url"] as? String else {
-                    assertionFailure()
+                    NSLog("[HLSBridge] guard failed line=%ld class=%@ method=%@ keys=%@", 787, className, methodName, Array(params.keys).description)
                     return
                 }
                 guard let requestHeaders = params["requestHeaders"] as? [String: String] else {
-                    assertionFailure()
+                    NSLog("[HLSBridge] guard failed line=%ld class=%@ method=%@ keys=%@", 791, className, methodName, Array(params.keys).description)
                     return
                 }
                 guard let parsedUrl = URL(string: url) else {
-                    assertionFailure()
+                    NSLog("[HLSBridge] guard failed line=%ld class=%@ method=%@ keys=%@", 795, className, methodName, Array(params.keys).description)
                     return
                 }
                 guard let host = parsedUrl.host, host == "server" else {
@@ -880,7 +880,7 @@ private final class SharedHLSVideoJSContext: NSObject {
                 }
             } else if methodName == "abort" {
                 guard let id = params["id"] as? Int else {
-                    assertionFailure()
+                    NSLog("[HLSBridge] guard failed line=%ld class=%@ method=%@ keys=%@", 883, className, methodName, Array(params.keys).description)
                     return
                 }
                 
