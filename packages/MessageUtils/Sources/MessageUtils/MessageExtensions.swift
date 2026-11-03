@@ -129,34 +129,9 @@ public extension Message {
         return false
     }
     var itHasRestrictedContent: Bool {
-        #if APP_STORE || DEBUG
-        for attr in attributes {
-            if let attr = attr as? RestrictedContentMessageAttribute {
-                for rule in attr.rules {
-                    if rule.platform == "ios" || rule.platform == "macos" {
-                        return true
-                    }
-                }
-            }
-        }
-        #endif
-       
         return false
     }
     func restrictedText(_ contentSettings: ContentSettings?, contentConfig: ContentSettingsConfiguration = .default) -> String? {
-        for attr in attributes {
-            if let attr = attr as? RestrictedContentMessageAttribute, let contentSettings {
-                for rule in attr.rules {
-                    if rule.platform == "ios" || rule.platform == "all" || contentSettings.addContentRestrictionReasons.contains(rule.platform) {
-                        if !contentSettings.ignoreContentRestrictionReasons.contains(rule.reason) {
-                            if rule.reason != "sensitive" && !contentConfig.canAdjustSensitiveContent {
-                                return rule.text
-                            }
-                        }
-                    }
-                }
-            }
-        }
         return nil
     }
     

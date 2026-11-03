@@ -104,33 +104,10 @@ extension Peer {
     }
     
     public func isRestrictedChannel(_ contentSettings: ContentSettings) -> Bool {
-        if let restrictionInfo = self.restrictionInfo {
-            for rule in restrictionInfo.rules {
-                #if APP_STORE || STABLE || BETA
-                if rule.platform == "ios" || rule.platform == "all", rule.reason != "sensitive" {
-                    return !contentSettings.ignoreContentRestrictionReasons.contains(rule.reason)
-                }
-                #endif
-            }
-        }
         return false
     }
     
-    
     public func restrictionText(_ contentSettings: ContentSettings?) -> String? {
-        if let restrictionInfo = self.restrictionInfo, self.isRestrictedChannel(contentSettings ?? .default) {
-            for rule in restrictionInfo.rules {
-                if rule.platform == "ios" || rule.platform == "all", rule.reason != "sensitive" {
-                    if let contentSettings {
-                        if !contentSettings.ignoreContentRestrictionReasons.contains(rule.reason) {
-                            return rule.text
-                        }
-                    } else {
-                        return rule.text
-                    }
-                }
-            }
-        }
         return nil
     }
     
