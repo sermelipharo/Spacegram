@@ -122,7 +122,7 @@ final class UpdateTabView : Control {
         let layout = TextViewLayout(.initialize(string: strings().updateUpdateTelegram, color: foreground, font: .medium(.title)), maximumNumberOfLines: 1)
         layout.measure(width: max(280, frame.width))
         textView.update(layout)
-        imageView.image = generateTintedImage(image: theme.icons.appUpdate, color: foreground)
+        imageView.image = NSImage(resource: .iconAppUpdate).precomposed(foreground)
         imageView.sizeToFit()
         progressView.progressColor = foreground
         setAccessibilityLabel(strings().updateUpdateTelegram)
@@ -302,29 +302,77 @@ final class UpdateTabController: GenericViewController<UpdateTabView> {
 
 
 final class MainController_View: View {
+    private let bgView: View = View()
+    private let contentView = View()
+    private let glassView: LiquidGlassView
     let compactBlur = NSVisualEffectView(frame: .zero)
-    var translucent = false {
+
+    private static var containerCornerRadius: CGFloat {
+        if #available(macOS 26.0, *) {
+            return 20
+        }
+        return 8
+    }
+
+    var compactCorners: Bool = false {
         didSet {
-            compactBlur.isHidden = !translucent
-            backgroundColor = translucent ? .clear : presentation.colors.background
+            if compactCorners != oldValue {
+                applyCornerRadius()
+            }
         }
     }
 
+    var translucent = false {
+        didSet {
+            compactBlur.isHidden = !translucent
+            bgView.isHidden = translucent
+            glassView.isHidden = translucent
+        }
+    }
+
+    private var currentCornerRadius: CGFloat {
+        if compactCorners {
+            return 0
+        }
+        return MainController_View.containerCornerRadius
+    }
+
+    private func applyCornerRadius() {
+        let radius = currentCornerRadius
+        bgView.layer?.cornerRadius = radius
+        contentView.layer?.cornerRadius = radius
+        glassView.cornerRadius = radius
+    }
+
     required init(frame frameRect: NSRect) {
+        let cornerRadius = MainController_View.containerCornerRadius
+        glassView = LiquidGlassView(frame: frameRect.size.bounds, cornerRadius: cornerRadius, hasShadow: true, hasBorder: true, tintAlpha: 0, customTint: presentation.colors.background, forceBlur: true)
         super.init(frame: frameRect)
-        layer?.masksToBounds = false
-        backgroundColor = presentation.colors.background
+
+        self.layer?.masksToBounds = false
+        self.backgroundColor = .clear
+
+        bgView.backgroundColor = presentation.colors.background
+        bgView.layer?.cornerRadius = cornerRadius
+        bgView.layer?.masksToBounds = true
+
+        contentView.backgroundColor = .clear
+        contentView.layer?.cornerRadius = cornerRadius
+        contentView.layer?.masksToBounds = true
+
         compactBlur.material = .sidebar
         compactBlur.blendingMode = .behindWindow
         compactBlur.state = .active
-        compactBlur.autoresizingMask = [.width, .height]
         compactBlur.isHidden = true
-        addSubview(compactBlur, positioned: .below, relativeTo: nil)
+
+        addSubview(compactBlur)
+        addSubview(bgView)
+        addSubview(glassView)
+        addSubview(contentView)
     }
 
-    override func layout() {
-        super.layout()
-        compactBlur.frame = bounds
+    func addContentView(_ view: NSView) {
+        contentView.addSubview(view)
     }
 
     required init?(coder: NSCoder) {
@@ -333,11 +381,39 @@ final class MainController_View: View {
 
     override func updateLocalizationAndTheme(theme: PresentationTheme) {
         super.updateLocalizationAndTheme(theme: theme)
-        backgroundColor = translucent ? .clear : theme.colors.background
+        bgView.backgroundColor = theme.colors.background
+        glassView.customTint = theme.colors.background
+    }
+
+    override func layout() {
+        super.layout()
+        updateLayout(size: bounds.size, transition: .immediate)
+    }
+
+    func updateLayout(size: NSSize, transition: ContainedViewLayoutTransition) {
+        compactBlur.frame = CGRect(origin: .zero, size: size)
+        transition.updateFrame(view: bgView, frame: CGRect(origin: .zero, size: size))
+        transition.updateFrame(view: contentView, frame: CGRect(origin: .zero, size: size))
+        transition.updateFrame(view: glassView, frame: CGRect(origin: .zero, size: size))
+        glassView.updateLayout(size: size, transition: transition)
     }
 }
 
 class MainViewController: TelegramGenericViewController<MainController_View> {
+
+    private enum MainTab: String, CaseIterable {
+        case contacts, calls, chats, settings
+    }
+
+    private static let tabOrderKey = "MainTabOrder"
+    private lazy var tabOrder: [MainTab] = {
+        let saved = UserDefaults.standard.stringArray(forKey: Self.tabOrderKey) ?? []
+        var order: [MainTab] = []
+        for tab in saved.compactMap(MainTab.init(rawValue:)) + MainTab.allCases where !order.contains(tab) {
+            order.append(tab)
+        }
+        return order
+    }()
 
     let chatList: ChatListController
     let navigation: NavigationViewController
@@ -376,17 +452,24 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
         self.navigation.frame = bounds
         self.contacts.frame = bounds
         updateController.updateLayout(context.layout, parentSize: size, isChatList: true)
-        updateChatListBottomOverlays()
         layoutConnectingStatusView()
+        updateChatListBottomOverlays()
         layoutCompactMenuButton()
+    }
+
+    private func updateButtonBottomY(_ bottomY: CGFloat) -> CGFloat {
+        if context.layout == .minimisize && !connectingStatusView.isHidden {
+            return min(bottomY, connectingStatusView.frame.minY)
+        }
+        return bottomY
     }
 
     private func updateChatListBottomOverlays() {
         let updateView = updateController.genericView
         let activeController = tabController.current === navigation ? navigation.controller : nil
         if activeController?.isLoaded() != true || !(activeController?.view is PeerListContainerView) {
-            let bottomInset: CGFloat = tabController.contentBottomInset + 12
-            updateView.setFrameOrigin(NSMakePoint(updateView.frame.minX, bounds.height - updateView.frame.height - bottomInset))
+            let bottom = updateButtonBottomY(bounds.height - tabController.contentBottomInset)
+            updateView.setFrameOrigin(NSMakePoint(updateView.frame.minX, bottom - updateView.frame.height - 12))
         }
         let updateContainer: (ViewController) -> Void = { [weak self, updateView] controller in
             guard controller.isLoaded(), let listView = controller.view as? PeerListContainerView else {
@@ -398,7 +481,7 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
                     return nil
                 }
                 let gap: CGFloat = 12
-                let bottom = container.convert(NSMakePoint(0, bottomY), from: listView).y
+                let bottom = self.updateButtonBottomY(container.convert(NSMakePoint(0, bottomY), from: listView).y)
                 var rect = updateView.frame
                 rect.origin.y = bottom - rect.height - gap
                 if rect != updateView.frame {
@@ -517,7 +600,7 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
         self.bar = .init(height: 0)
         self.tabController.bar = .init(height: 0)
 
-        addSubview(self.tabController.view)
+        genericView.addContentView(self.tabController.view)
 
         if !context.isSupport {
             addSubview(updateController.view)
@@ -537,21 +620,19 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
             self.connectingStatusView.isHidden = status == nil
             self.connectingStatusView.update(status: status, animated: true)
             self.layoutConnectingStatusView()
+            if self.context.layout == .minimisize {
+                self.updateChatListBottomOverlays()
+            }
         }))
                 
-        tabController.add(tab: TabAnimatedItem(.tab_contacts, image: theme.icons.tab_contacts, selectedImage: theme.icons.tab_contacts_active, controller: contacts))
-        
-        tabController.add(tab: TabAnimatedItem(.tab_calls, image: theme.icons.tab_calls, selectedImage: theme.icons.tab_calls_active, controller: phoneCalls))
-        
-        tabController.add(tab: TabBadgeItem(context, controller: navigation, image: theme.icons.tab_chats, selectedImage: theme.icons.tab_chats_active, longHoverHandler: { [weak self] control in
-            self?.showFastChatSettings(control)
-        }))
-        
-        tabController.add(tab: TabAllBadgeItem(context, image: theme.icons.tab_settings, selectedImage: theme.icons.tab_settings_active, controller: settings, longHoverHandler: { [weak self] control in
-            self?.showFastSettings(control)
-        }))
-        
-        
+        for tab in tabOrder {
+            tabController.add(tab: makeTab(tab))
+        }
+        tabController.allowsTabReordering = true
+        tabController.didReorderTabs = { [weak self] in
+            self?.saveTabOrder()
+        }
+
         tabController.updateLocalizationAndTheme(theme: theme)
 
         updateTabAccessibility()
@@ -569,8 +650,8 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
                 self.tabController.select(index: self.chatIndex)
             }
             self.updateController.updateLayout(state, parentSize: self.frame.size, isChatList: true)
-            self.updateChatListBottomOverlays()
             self.layoutConnectingStatusView()
+            self.updateChatListBottomOverlays()
         }))
         
         compactMenuButton.autohighlight = false
@@ -638,21 +719,62 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
         settings.loadViewIfNeeded(bounds)
     }
 
-    private func showCallsTab() {
-        tabController.insert(tab: TabAnimatedItem(.tab_calls, image: theme.icons.tab_calls, selectedImage: theme.icons.tab_calls_active, controller: phoneCalls), at: 1)
-        previousIndex = tabController.selectedIndex
-        updateTabAccessibility()
+    private func controller(for tab: MainTab) -> ViewController {
+        switch tab {
+        case .contacts: return contacts
+        case .calls: return phoneCalls
+        case .chats: return navigation
+        case .settings: return settings
+        }
     }
-    private func hideCallsTab() {
-        tabController.remove(at: 1)
-        previousIndex = tabController.selectedIndex
+
+    private func makeTab(_ tab: MainTab) -> TabItem {
+        switch tab {
+        case .contacts:
+            return TabAnimatedItem(.tab_contacts, image: theme.icons.tab_contacts, selectedImage: theme.icons.tab_contacts_active, controller: contacts)
+        case .calls:
+            return TabAnimatedItem(.tab_calls, image: theme.icons.tab_calls, selectedImage: theme.icons.tab_calls_active, controller: phoneCalls)
+        case .chats:
+            return TabBadgeItem(context, controller: navigation, image: theme.icons.tab_chats, selectedImage: theme.icons.tab_chats_active, longHoverHandler: { [weak self] control in
+                self?.showFastChatSettings(control)
+            })
+        case .settings:
+            return TabAllBadgeItem(context, image: theme.icons.tab_settings, selectedImage: theme.icons.tab_settings_active, controller: settings, longHoverHandler: { [weak self] control in
+                self?.showFastSettings(control)
+            })
+        }
     }
-    
+
+    private func saveTabOrder() {
+        let visible = MainTab.allCases.compactMap { tab in
+            tabController.index(of: controller(for: tab)).map { (index: $0, tab: tab) }
+        }.sorted { $0.index < $1.index }.map(\.tab)
+        var order = visible
+        for (index, tab) in tabOrder.enumerated() where !visible.contains(tab) {
+            order.insert(tab, at: index)
+        }
+        tabOrder = order
+        UserDefaults.standard.set(order.map(\.rawValue), forKey: Self.tabOrderKey)
+    }
+
+    private func updateTabVisibility(_ tab: MainTab, isVisible: Bool) {
+        let target = controller(for: tab)
+        if let index = tabController.index(of: target) {
+            guard !isVisible else { return }
+            if tabController.current === target {
+                tabController.select(index: chatIndex)
+            }
+            tabController.remove(at: index)
+        } else if isVisible, let index = tabOrder.firstIndex(of: tab) {
+            let visibleIndex = tabOrder[..<index].filter { tabController.index(of: controller(for: $0)) != nil }.count
+            tabController.insert(tab: makeTab(tab), at: visibleIndex)
+            updateTabAccessibility()
+        }
+    }
+
     override var removeAfterDisapper: Bool {
         return false
     }
-    
-    private var showCallTabs: Bool = true
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -662,14 +784,8 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
                 
         prefDisposable.set((baseAppSettings(accountManager: context.sharedContext.accountManager) |> deliverOnMainQueue).start(next: { [weak self] settings in
             guard let `self` = self else {return}
-            if settings.showCallsTab != self.showCallTabs {
-                self.showCallTabs = settings.showCallsTab
-                if self.showCallTabs {
-                    self.showCallsTab()
-                } else {
-                    self.hideCallsTab()
-                }
-            }
+            self.updateTabVisibility(.contacts, isVisible: settings.showContactsTab)
+            self.updateTabVisibility(.calls, isVisible: settings.showCallsTab)
         }))
 
     }
@@ -782,7 +898,7 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
         case .none:
             items.append(ContextMenuItem(strings().fastSettingsSetPasscode, handler: { [weak self] in
                 guard let `self` = self else {return}
-                self.tabController.select(index: self.tabController.count - 1)
+                self.tabController.select(index: self.settingsIndex)
                 self.context.bindings.rootNavigation().push(PasscodeSettingsViewController(self.context))
             }, itemImage: MenuAnimation.menu_lock.value))
         default:
@@ -838,17 +954,17 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
     
     private func updateTabsIfNeeded() {
         if !tabController.isEmpty && (previousTheme?.colors != theme.colors ||  previousIconColor != theme.colors.accentIcon) {
-            var index: Int = 0
-            tabController.replace(tab: tabController.tab(at: index).withUpdatedImages(theme.icons.tab_contacts, theme.icons.tab_contacts_active), at: index)
-            index += 1
-            if showCallTabs {
-                tabController.replace(tab: tabController.tab(at: index).withUpdatedImages(theme.icons.tab_calls, theme.icons.tab_calls_active), at: index)
-                index += 1
+            let icons = theme.icons
+            for (tab, image, selectedImage) in [
+                (MainTab.contacts, icons.tab_contacts, icons.tab_contacts_active),
+                (.calls, icons.tab_calls, icons.tab_calls_active),
+                (.chats, icons.tab_chats, icons.tab_chats_active),
+                (.settings, icons.tab_settings, icons.tab_settings_active)
+            ] {
+                if let index = tabController.index(of: controller(for: tab)) {
+                    tabController.replace(tab: tabController.tab(at: index).withUpdatedImages(image, selectedImage), at: index)
+                }
             }
-            
-            tabController.replace(tab: tabController.tab(at: index).withUpdatedImages(theme.icons.tab_chats, theme.icons.tab_chats_active), at: index)
-            index += 1
-            tabController.replace(tab: tabController.tab(at: index).withUpdatedImages(theme.icons.tab_settings, theme.icons.tab_settings_active), at: index)
         }
         self.previousTheme = theme
         self.previousIconColor = theme.colors.accentIcon
@@ -875,7 +991,7 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
         }
     }
     
-    private var previousIndex: Int? = nil
+    private weak var previousTabController: ViewController?
     private weak var settingsReturnController: ViewController?
     private weak var settingsReturnSidebar: ViewController?
     private weak var settingsEntryController: ViewController?
@@ -901,7 +1017,7 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
         settingsEntryController = nil
         settingsReturnController = nil
         settingsReturnSidebar = nil
-        previousIndex = index
+        previousTabController = tabController.tab(at: index).controller
         tabController.select(index: index)
     }
     
@@ -911,10 +1027,10 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
         let navigation = context.bindings.rootNavigation()
         
         if let controller = navigation.controller as? InputDataController, controller.identifier == "wallet-create" {
-            self.previousIndex = index
+            self.previousTabController = tabController.tab(at: index).controller
             quickController?.popover?.hide()
         } else {
-            if previousIndex == tabController.count - 1 || isSettings {
+            if previousTabController === settings || isSettings {
                 if isSettings && context.layout != .single {
                     settingsReturnController = nil
                     navigation.enumerateControllers { controller, _ in
@@ -922,9 +1038,7 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
                         self.settingsReturnController = controller
                         return true
                     }
-                    settingsReturnSidebar = previousIndex.flatMap { index in
-                        (0 ..< tabController.count).contains(index) ? tabController.tab(at: index).controller : nil
-                    } ?? self.navigation
+                    settingsReturnSidebar = previousTabController ?? self.navigation
                     let controller = GeneralSettingsViewController(context)
                     settingsEntryController = controller
                     navigation.push(controller, false)
@@ -941,7 +1055,7 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
                     })
                 }
             }
-            self.previousIndex = index
+            self.previousTabController = tabController.tab(at: index).controller
             quickController?.popover?.hide()
         }
     }
@@ -1061,18 +1175,13 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
     }
     
     var chatIndex: Int {
-        if showCallTabs {
-            return 2
-        } else {
-            return 1
-        }
+        return tabController.index(of: navigation) ?? 0
     }
-    
+
     var settingsIndex: Int {
-        return chatIndex + 1
+        return tabController.index(of: settings) ?? 0
     }
-    
-    
+
     func openChat(_ index: Int, force: Bool = false) {
         if self.tabController.current == navigation {
             let controller = navigation.controller
@@ -1094,13 +1203,13 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
     }
 
     func showCalls() {
-        if showCallTabs {
+        if let index = tabController.index(of: phoneCalls) {
             context.bindings.switchSplitLayout(.dual)
             if self.context.layout != .minimisize {
                 if self.context.layout == .single {
                     self.navigationController?.close()
                 }
-                self.tabController.select(index: 1)
+                self.tabController.select(index: index)
             }
         }
     }

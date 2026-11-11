@@ -128,7 +128,7 @@ public extension Message {
         }
         return false
     }
-    var itHasRestrictedContent: Bool {
+    func hasRestrictedContent(_ contentSettings: ContentSettings?) -> Bool {
         return false
     }
     func restrictedText(_ contentSettings: ContentSettings?, contentConfig: ContentSettingsConfiguration = .default) -> String? {
